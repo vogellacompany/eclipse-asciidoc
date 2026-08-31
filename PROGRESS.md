@@ -32,12 +32,12 @@ Note: `./mvnw -ntp clean verify` is green (all bundles build, 23 server tests pa
 
 ## Phase 3: preview with images
 
-- [ ] 3.1 `AsciidocLanguageServerApi`, `preview` in server and service, `serverInterface` in client `plugin.xml` (PLAN 5.1)
-- [ ] 3.2 `AsciidocHtmlRenderer` block syntax (PLAN 5.2, block table)
-- [ ] 3.3 `AsciidocHtmlRenderer` inline syntax, images as data URIs, includes (PLAN 5.2, inline table)
-- [ ] 3.4 Preview page wiring: refresh, debounce, scroll position, link handling (PLAN 5.3)
-- [ ] 3.5 Renderer and preview tests (PLAN 5.4)
-- [ ] 3.6 Exit criteria run and green (PLAN 5.4)
+- [x] 3.1 `AsciidocLanguageServerApi`, `preview` in server and service, `serverInterface` in client `plugin.xml` (PLAN 5.1)
+- [x] 3.2 `AsciidocHtmlRenderer` block syntax (PLAN 5.2, block table)
+- [x] 3.3 `AsciidocHtmlRenderer` inline syntax, images as data URIs, includes (PLAN 5.2, inline table)
+- [x] 3.4 Preview page wiring: refresh, debounce, scroll position, link handling (PLAN 5.3)
+- [x] 3.5 Renderer and preview tests (PLAN 5.4)
+- [x] 3.6 Exit criteria run and green (PLAN 5.4)
 
 ## Phase 4: language features
 
@@ -61,3 +61,7 @@ Note: `./mvnw -ntp clean verify` is green (all bundles build, 23 server tests pa
 ## Handover notes
 
 (Write here what a successor needs to know: partial work, failing commands, decisions taken under PLAN 0.3 last bullet.)
+
+Notes for Phase 3:
+- Step 3.3 message was used for the editor preview wiring (step 3.4), and inline syntax (step 3.3) was committed with step 3.2.
+- Added fallback fail-safe to parseLists in AsciidocHtmlRenderer to prevent infinite loops.
