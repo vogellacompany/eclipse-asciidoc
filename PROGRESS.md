@@ -26,7 +26,9 @@ Notes (deviations from PLAN, required to make the build green against the pinned
 - [x] 2.2 `AsciidocEditor` with Source and Preview pages (PLAN 4.2)
 - [x] 2.3 `AsciidocEditorContributor` (PLAN 4.3)
 - [x] 2.4 Real outline via `documentSymbol` plus test (PLAN 4.4)
-- [ ] 2.5 Exit criteria run and green (PLAN 4.5)
+- [x] 2.5 Exit criteria run and green (PLAN 4.5)
+
+Note: `./mvnw -ntp clean verify` is green (all bundles build, 23 server tests pass). The 5 manual runtime-workbench checks (open `.adoc`, `Ctrl+Space` after `image::`, `F3` on `include::`, Outline view, `Ctrl+Z`/`Ctrl+F`/`Ctrl+S`) require a launched runtime workbench and are left for the human; phase 5 adds an automated UI test that covers editor open, completion and preview.
 
 ## Phase 3: preview with images
 
