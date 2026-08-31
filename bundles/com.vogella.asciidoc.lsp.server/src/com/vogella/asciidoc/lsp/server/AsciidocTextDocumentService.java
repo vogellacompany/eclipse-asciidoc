@@ -328,6 +328,7 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 		return completions;
 	}
 
+
 	@Override
 	public CompletableFuture<List<DocumentLink>> documentLink(DocumentLinkParams params) {
 		return CompletableFuture.supplyAsync(() -> {
@@ -338,57 +339,42 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 			}
 
 			List<DocumentLink> links = new ArrayList<>();
-			List<String> lines = model.getLines();
+			for (AsciidocDocumentModel.Macro macro : model.getMacros()) {
+				String type = macro.type;
+				String path = macro.target;
+				
+				if (!"include".equals(type) && !"image".equals(type) && !"link".equals(type)) {
+					continue;
+				}
 
-			for (int i = 0; i < lines.size(); i++) {
-				collectLinks(uri, lines.get(i), i, links);
+				String targetUri = null;
+				if ("link".equals(type)) {
+					if (path.startsWith("http://") || path.startsWith("https://")) {
+						targetUri = path;
+					} else {
+						Location loc = resolveFileLocation(uri, path);
+						if (loc != null) targetUri = loc.getUri();
+					}
+				} else {
+					Location loc = resolveFileLocation(uri, path);
+					if (loc == null && "image".equals(type)) {
+						loc = resolveFileLocation(uri, "img/" + path);
+					}
+					if (loc != null) targetUri = loc.getUri();
+				}
+
+				if (targetUri != null) {
+					// The matcher startChar in the original model needs adjustment to capture just the path.
+					// In Macro pattern: group 2 is path, start() and end() are for the whole macro.
+					// Let's use the whole macro range for the link for simplicity, or we can approximate.
+					Range range = new Range(new Position(macro.line, macro.startChar), new Position(macro.line, macro.endChar));
+					DocumentLink link = new DocumentLink(range, targetUri, "Open " + path);
+					links.add(link);
+				}
 			}
 
 			return links;
 		});
-	}
-
-	private void collectLinks(String baseUri, String lineContent, int lineIndex, List<DocumentLink> links) {
-		// Pattern for include::path[...], image::path[...], and link:path[...]
-		Pattern pattern = Pattern.compile("(include|image|link):[:]?([^\\s\\[\\]]+)\\[[^\\]]*\\]");
-		Matcher matcher = pattern.matcher(lineContent);
-		while (matcher.find()) {
-			String type = matcher.group(1);
-			String path = matcher.group(2);
-			int startChar = matcher.start(2);
-			int endChar = matcher.end(2);
-
-			String targetUri = null;
-
-			if ("link".equals(type)) {
-				// Handle link: syntax
-				if (path.startsWith("http://") || path.startsWith("https://")) {
-					// External link - use URL directly
-					targetUri = path;
-				} else {
-					// Internal file link - resolve relative path
-					Location loc = resolveFileLocation(baseUri, path);
-					if (loc != null) {
-						targetUri = loc.getUri();
-					}
-				}
-			} else {
-				// Handle include:: and image:: syntax
-				Location loc = resolveFileLocation(baseUri, path);
-				if (loc == null && "image".equals(type)) {
-					loc = resolveFileLocation(baseUri, "img/" + path);
-				}
-				if (loc != null) {
-					targetUri = loc.getUri();
-				}
-			}
-
-			if (targetUri != null) {
-				Range range = new Range(new Position(lineIndex, startChar), new Position(lineIndex, endChar));
-				DocumentLink link = new DocumentLink(range, targetUri, "Open " + path);
-				links.add(link);
-			}
-		}
 	}
 
 	@Override
@@ -400,55 +386,36 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 			if (model == null) {
 				return Collections.emptyList();
 			}
-			List<String> lines = model.getLines();
 
-			List<int[]> headings = new ArrayList<>();
-			List<String> titles = new ArrayList<>();
-			String openDelimiter = null;
-			for (int i = 0; i < lines.size(); i++) {
-				String line = lines.get(i);
-				String delim = blockDelimiterToken(line);
-				if (openDelimiter != null) {
-					if (delim != null && delim.equals(openDelimiter)) {
-						openDelimiter = null;
-					}
-					continue;
-				}
-				if (delim != null) {
-					openDelimiter = delim;
-					continue;
-				}
-				Matcher m = HEADING_PATTERN.matcher(line);
-				if (m.matches()) {
-					headings.add(new int[] { i, m.group(1).length() });
-					titles.add(m.group(2).trim());
-				}
-			}
-
-			int lineCount = lines.size();
+			List<AsciidocDocumentModel.Heading> headings = model.getHeadings();
+			int lineCount = model.getLines().size();
 			List<DocumentSymbol> roots = new ArrayList<>();
 			Deque<DocumentSymbol> stack = new ArrayDeque<>();
 			Deque<Integer> levelStack = new ArrayDeque<>();
+			
 			for (int h = 0; h < headings.size(); h++) {
-				int startLine = headings.get(h)[0];
-				int level = headings.get(h)[1];
+				AsciidocDocumentModel.Heading heading = headings.get(h);
+				int startLine = heading.line;
+				int level = heading.level;
 				int endLine = lineCount - 1;
+				
 				for (int k = h + 1; k < headings.size(); k++) {
-					if (headings.get(k)[1] <= level) {
-						endLine = headings.get(k)[0] - 1;
+					if (headings.get(k).level <= level) {
+						endLine = headings.get(k).line - 1;
 						break;
 					}
 				}
-				String headingLine = lines.get(startLine);
-				int endChar = endLine >= 0 && endLine < lineCount ? lines.get(endLine).length() : 0;
+				
+				String headingLine = model.getLineContent(startLine);
+				int endChar = endLine >= 0 && endLine < lineCount ? model.getLineContent(endLine).length() : 0;
 
 				DocumentSymbol symbol = new DocumentSymbol();
-				symbol.setName(titles.get(h));
+				symbol.setName(heading.title);
 				symbol.setKind(SymbolKind.Module);
 				symbol.setRange(new Range(new Position(startLine, 0),
 						new Position(Math.max(endLine, startLine), endChar)));
 				symbol.setSelectionRange(
-						new Range(new Position(startLine, 0), new Position(startLine, headingLine.length())));
+						new Range(new Position(startLine, 0), new Position(startLine, headingLine != null ? headingLine.length() : 0)));
 				symbol.setChildren(new ArrayList<>());
 
 				while (!levelStack.isEmpty() && levelStack.peek() >= level) {
@@ -469,34 +436,6 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 		});
 	}
 
-	private static final Pattern HEADING_PATTERN = Pattern.compile("^(={1,6})\\s+(.+?)\\s*(=+\\s*)?$");
-
-	/** Returns a canonical token for a delimited block line, or null when the line is not a delimiter. */
-	private static String blockDelimiterToken(String line) {
-		String t = line.strip();
-		if (t.matches("-{4,}")) {
-			return "-";
-		}
-		if (t.matches("\\.{4,}")) {
-			return ".";
-		}
-		if (t.matches("/{4,}")) {
-			return "/";
-		}
-		if (t.matches("={4,}")) {
-			return "=";
-		}
-		if (t.matches("\\*{4,}")) {
-			return "*";
-		}
-		if (t.matches("_{4,}")) {
-			return "_";
-		}
-		if (t.matches("\\|={3,}")) {
-			return "|";
-		}
-		return null;
-	}
 
 	@Override
 	public CompletableFuture<Hover> hover(HoverParams params) {
@@ -508,46 +447,35 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 
 			int lineNum = params.getPosition().getLine();
 			int charPos = params.getPosition().getCharacter();
-			String lineContent = model.getLineContent(lineNum);
-			if (lineContent == null)
-				return null;
 
-			// Check for image macro
-			// Matches image::path[...] or image:path[...]
-			Pattern imagePattern = Pattern.compile("(image:[:]?([^\\s\\[\\]]+)\\[[^\\]]*\\])");
-			Matcher matcher = imagePattern.matcher(lineContent);
+			for (AsciidocDocumentModel.Macro macro : model.getMacros()) {
+				if (macro.line == lineNum && "image".equals(macro.type)) {
+					if (charPos >= macro.startChar && charPos <= macro.endChar) {
+						String imageName = macro.target;
+						if (!imageName.isEmpty()) {
+							try {
+								URI docUri = new URI(uri);
+								File docFile = new File(docUri);
+								File parentDir = docFile.getParentFile();
 
-			while (matcher.find()) {
-				// Check if the cursor is within the match range
-				if (charPos >= matcher.start() && charPos <= matcher.end()) {
-					String imageName = matcher.group(2);
-					if (!imageName.isEmpty()) {
-						try {
-							URI docUri = new URI(uri);
-							File docFile = new File(docUri);
-							File parentDir = docFile.getParentFile();
+								File imgFile = new File(parentDir, "img/" + imageName);
+								if (!imgFile.exists()) {
+									imgFile = new File(parentDir, imageName);
+								}
 
-							// Try both 'img/' subdirectory and current directory
-							File imgFile = new File(parentDir, "img/" + imageName);
-							if (!imgFile.exists()) {
-								imgFile = new File(parentDir, imageName);
+								Hover hover = new Hover();
+								if (imgFile.exists()) {
+									String imgUri = imgFile.toURI().toString();
+									String content = String.format("![%s](%s)", imageName, imgUri);
+									hover.setContents(new MarkupContent(MarkupKind.MARKDOWN, content));
+								} else {
+									String content = String.format("**Image not found:** `%s`\n\nChecked in:\n* `%s`\n* `%s`", 
+											imageName, new File(parentDir, "img/").getPath(), parentDir.getPath());
+									hover.setContents(new MarkupContent(MarkupKind.MARKDOWN, content));
+								}
+								return hover;
+							} catch (Exception e) {
 							}
-
-							Hover hover = new Hover();
-							if (imgFile.exists()) {
-								String imgUri = imgFile.toURI().toString();
-								// Render the actual image in Markdown
-								String content = String.format("![%s](%s)", imageName, imgUri);
-								hover.setContents(new MarkupContent(MarkupKind.MARKDOWN, content));
-							} else {
-								// Explicitly inform that the image was not found
-								String content = String.format("**Image not found:** `%s`\n\nChecked in:\n* `%s`\n* `%s`", 
-										imageName, new File(parentDir, "img/").getPath(), parentDir.getPath());
-								hover.setContents(new MarkupContent(MarkupKind.MARKDOWN, content));
-							}
-							return hover;
-						} catch (Exception e) {
-							// Fallback to default
 						}
 					}
 				}
@@ -568,42 +496,22 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 		int line = params.getPosition().getLine();
 		int character = params.getPosition().getCharacter();
 
-		String lineContent = model.getLineContent(line);
-		if (lineContent == null) {
-			return CompletableFuture.completedFuture(Either.forLeft(Collections.emptyList()));
-		}
-
-		// Detect include::path[...]
-		Pattern includePattern = Pattern.compile("include::([^\\s\\[\\]]+)\\[[^\\]]*\\]");
-		Matcher matcher = includePattern.matcher(lineContent);
-		while (matcher.find()) {
-			int start = matcher.start(1);
-			int end = matcher.end(1);
-			if (character >= start && character <= end) {
-				String path = matcher.group(1);
-				Location loc = resolveFileLocation(uri, path);
-				if (loc != null) {
-					return CompletableFuture.completedFuture(Either.forLeft(Collections.singletonList(loc)));
-				}
-			}
-		}
-
-		// Detect image::path[...]
-		Pattern imagePattern = Pattern.compile("image:[:]?([^\\s\\[\\]]+)\\[[^\\]]*\\]");
-		matcher = imagePattern.matcher(lineContent);
-		while (matcher.find()) {
-			int start = matcher.start(1);
-			int end = matcher.end(1);
-			if (character >= start && character <= end) {
-				String path = matcher.group(1);
-				// Try direct path
-				Location loc = resolveFileLocation(uri, path);
-				if (loc == null) {
-					// Try in img/ subdirectory
-					loc = resolveFileLocation(uri, "img/" + path);
-				}
-				if (loc != null) {
-					return CompletableFuture.completedFuture(Either.forLeft(Collections.singletonList(loc)));
+		for (AsciidocDocumentModel.Macro macro : model.getMacros()) {
+			if (macro.line == line && character >= macro.startChar && character <= macro.endChar) {
+				String path = macro.target;
+				if ("include".equals(macro.type)) {
+					Location loc = resolveFileLocation(uri, path);
+					if (loc != null) {
+						return CompletableFuture.completedFuture(Either.forLeft(Collections.singletonList(loc)));
+					}
+				} else if ("image".equals(macro.type)) {
+					Location loc = resolveFileLocation(uri, path);
+					if (loc == null) {
+						loc = resolveFileLocation(uri, "img/" + path);
+					}
+					if (loc != null) {
+						return CompletableFuture.completedFuture(Either.forLeft(Collections.singletonList(loc)));
+					}
 				}
 			}
 		}
@@ -660,94 +568,7 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 	}
 
 
-	@Override
-	public CompletableFuture<List<Either<Command, CodeAction>>> codeAction(CodeActionParams params) {
-		List<Either<Command, CodeAction>> actions = new ArrayList<>();
 
-		// Check the diagnostics for the current document
-		for (Diagnostic diagnostic : params.getContext().getDiagnostics()) {
-			if ("placeholder.text.issue".equals(diagnostic.getCode().getLeft())) {
-				// Create a text edit for replacing the placeholder
-				TextEdit edit = new TextEdit();
-				edit.setRange(diagnostic.getRange());
-				edit.setNewText("replacement_text");
-
-				// Create a workspace edit
-				WorkspaceEdit workspaceEdit = new WorkspaceEdit();
-				workspaceEdit.setChanges(Collections.singletonMap(params.getTextDocument().getUri(), List.of(edit)));
-
-				// Create the code action
-				CodeAction codeAction = new CodeAction("Replace placeholder with 'replacement_text'");
-				codeAction.setKind(CodeActionKind.QuickFix);
-				codeAction.setEdit(workspaceEdit);
-
-				// Add to the actions list
-				actions.add(Either.forRight(codeAction));
-			}
-		}
-
-		// Return the actions as a CompletableFuture
-		return CompletableFuture.completedFuture(actions);
-	}
-
-	@Override
-	public CompletableFuture<List<? extends CodeLens>> codeLens(CodeLensParams params) {
-		return CompletableFuture.supplyAsync(() -> {
-			// Retrieve the document text from your model
-			String uri = params.getTextDocument().getUri();
-			AsciidocDocumentModel model = docs.get(uri);
-			if (model == null) {
-				return Collections.emptyList();
-			}
-
-			List<CodeLens> codeLenses = new ArrayList<>();
-			List<String> lines = model.getLines();
-
-			// Scan for "TODO" comments
-			for (int i = 0; i < lines.size(); i++) {
-				String line = lines.get(i);
-				int todoIndex = line.indexOf("TODO");
-				if (todoIndex != -1) {
-					// Define the range for the TODO
-					Range range = new Range(new Position(i, todoIndex), new Position(i, todoIndex + "TODO".length()));
-
-					// Create a CodeLens with a command
-					Command command = new Command("Resolve TODO", "example.resolveTodo",
-							Collections.singletonList("Resolve the TODO at line " + (i + 1)));
-
-					CodeLens codeLens = new CodeLens(range, command, null);
-					codeLenses.add(codeLens);
-				}
-			}
-
-			return codeLenses;
-		});
-	}
-
-	@Override
-	public CompletableFuture<CodeLens> resolveCodeLens(CodeLens unresolved) {
-		return null;
-	}
-
-	@Override
-	public CompletableFuture<List<? extends TextEdit>> formatting(DocumentFormattingParams params) {
-		return null;
-	}
-
-	@Override
-	public CompletableFuture<List<? extends TextEdit>> rangeFormatting(DocumentRangeFormattingParams params) {
-		return null;
-	}
-
-	@Override
-	public CompletableFuture<List<? extends TextEdit>> onTypeFormatting(DocumentOnTypeFormattingParams params) {
-		return null;
-	}
-
-	@Override
-	public CompletableFuture<WorkspaceEdit> rename(RenameParams params) {
-		return null;
-	}
 
 	@Override
 	public void didOpen(DidOpenTextDocumentParams params) {
@@ -778,23 +599,6 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 
 	private List<Diagnostic> validate(AsciidocDocumentModel model) {
 		List<Diagnostic> diagnostics = new ArrayList<>();
-
-		// Simulate finding a placeholder issue
-		for (int i = 0; i < model.getResolvedLines().size(); i++) {
-			String line = model.getResolvedLines().get(i).text;
-			int index = line.indexOf("PLACEHOLDER_TEXT");
-			if (index != -1) {
-				// Create a diagnostic for the placeholder text issue
-				Diagnostic diagnostic = new Diagnostic();
-				diagnostic.setSeverity(DiagnosticSeverity.Warning);
-				diagnostic.setMessage("Found placeholder text that should be replaced.");
-				diagnostic.setCode("placeholder.text.issue");
-				diagnostic.setRange(
-						new Range(new Position(i, index), new Position(i, index + "PLACEHOLDER_TEXT".length())));
-				diagnostics.add(diagnostic);
-			}
-		}
-
 		return diagnostics;
 	}
 

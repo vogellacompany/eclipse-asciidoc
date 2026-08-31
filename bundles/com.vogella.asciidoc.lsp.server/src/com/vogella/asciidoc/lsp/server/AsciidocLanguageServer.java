@@ -37,7 +37,6 @@ public class AsciidocLanguageServer implements AsciidocLanguageServerApi {
 		res.getCapabilities().setDefinitionProvider(Boolean.TRUE);
 		res.getCapabilities().setDocumentLinkProvider(new org.eclipse.lsp4j.DocumentLinkOptions());
 		res.getCapabilities().setCodeActionProvider(Boolean.TRUE);
-		res.getCapabilities().setCodeLensProvider(new CodeLensOptions(false));
 //		res.getCapabilities().setReferencesProvider(Boolean.TRUE);
 		return CompletableFuture.supplyAsync(() -> res);
 	}

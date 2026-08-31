@@ -16,10 +16,10 @@ public class Main {
 	}
 
 	public static void startServer(InputStream in, OutputStream out) throws InterruptedException, ExecutionException {
-		AsciidocLanguageServer server = new AsciidocLanguageServer(); 	// <.>
-		Launcher<LanguageClient> l = LSPLauncher.createServerLauncher(server, in, out); // <.>
+		AsciidocLanguageServer server = new AsciidocLanguageServer();
+		Launcher<LanguageClient> l = LSPLauncher.createServerLauncher(server, in, out);
 		Future<?> startListening = l.startListening();									
-		server.setRemoteProxy(l.getRemoteProxy());						// <.>
-		startListening.get();											// <.>
+		server.setRemoteProxy(l.getRemoteProxy());
+		startListening.get();
 	}
 }
