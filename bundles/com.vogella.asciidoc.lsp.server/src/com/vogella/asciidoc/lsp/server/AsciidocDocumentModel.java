@@ -90,7 +90,7 @@ public class AsciidocDocumentModel {
 	private static final Pattern HEADING_PATTERN = Pattern.compile("^(={1,6})\\s+(.+?)\\s*(=+\\s*)?$");
 	private static final Pattern ATTRIBUTE_PATTERN = Pattern.compile("^:([\\w-]+):(.*)$");
 	private static final Pattern ANCHOR_PATTERN = Pattern.compile("\\[\\[([^\\]]+)\\]\\]|\\[#([^\\]]+)\\]");
-	private static final Pattern MACRO_PATTERN = Pattern.compile("(include|image|link|xref):[:]?([^\\s\\[\\]]+)\\[([^\\]]*)\\]|<<([^>,]+)(?:,([^>]*))?>>");
+	private static final Pattern MACRO_PATTERN = Pattern.compile("(include|image|link|xref):[:]?([^\\s\\[\\]]+)\\[([^\\]]*)\\]|<<([^>,]+)(?:,([^>]*))?>>|(?<!link:)(https?://[^\\s\\[\\]]+)");
 
 	public AsciidocDocumentModel(String text) {
 		this.text = text;
@@ -137,8 +137,10 @@ public class AsciidocDocumentModel {
 					while (macro.find()) {
 						if (macro.group(1) != null) {
 							macros.add(new Macro(macro.group(1), macro.group(2), macro.group(3), lineNumber, macro.start(2), macro.end(2)));
-						} else {
+						} else if (macro.group(4) != null) {
 							macros.add(new Macro("xref", macro.group(4), macro.group(5) != null ? macro.group(5) : "", lineNumber, macro.start(4), macro.end(4)));
+						} else if (macro.group(6) != null) {
+							macros.add(new Macro("link", macro.group(6), "", lineNumber, macro.start(6), macro.end(6)));
 						}
 					}
 				}

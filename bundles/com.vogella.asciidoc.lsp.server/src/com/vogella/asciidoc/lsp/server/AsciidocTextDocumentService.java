@@ -408,8 +408,11 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 				String type = macro.type;
 				String path = macro.target;
 				
-				if (!"include".equals(type) && !"image".equals(type) && !"link".equals(type)) {
+				if (!"include".equals(type) && !"image".equals(type) && !"link".equals(type) && !"xref".equals(type)) {
 					continue;
+				}
+				if ("xref".equals(type) && !path.contains(".adoc")) {
+					continue; // internal xrefs are not DocumentLinks
 				}
 
 				String targetUri = null;
@@ -420,20 +423,28 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 						Location loc = resolveFileLocation(uri, path);
 						if (loc != null) targetUri = loc.getUri();
 					}
+				} else if ("xref".equals(type)) {
+					String filename = path;
+					if (filename.contains("#")) filename = filename.substring(0, filename.indexOf('#'));
+					Location loc = resolveFileLocation(uri, filename);
+					if (loc != null) targetUri = loc.getUri();
 				} else {
 					Location loc = resolveFileLocation(uri, path);
 					if (loc == null && "image".equals(type)) {
-						loc = resolveFileLocation(uri, "img/" + path);
+						String imagesdir = model.getAttributes().getOrDefault("imagesdir", "");
+						if (!imagesdir.isEmpty()) {
+							if (!imagesdir.endsWith("/")) imagesdir += "/";
+							loc = resolveFileLocation(uri, imagesdir + path);
+						} else {
+							loc = resolveFileLocation(uri, "img/" + path);
+						}
 					}
 					if (loc != null) targetUri = loc.getUri();
 				}
 
 				if (targetUri != null) {
-					// The matcher startChar in the original model needs adjustment to capture just the path.
-					// In Macro pattern: group 2 is path, start() and end() are for the whole macro.
-					// Let's use the whole macro range for the link for simplicity, or we can approximate.
 					Range range = new Range(new Position(macro.line, macro.startChar), new Position(macro.line, macro.endChar));
-					DocumentLink link = new DocumentLink(range, targetUri, "Open " + path);
+					DocumentLink link = new DocumentLink(range, targetUri);
 					links.add(link);
 				}
 			}
@@ -514,32 +525,47 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 			int charPos = params.getPosition().getCharacter();
 
 			for (AsciidocDocumentModel.Macro macro : model.getMacros()) {
-				if (macro.line == lineNum && "image".equals(macro.type)) {
+				if (macro.line == lineNum) {
 					if (charPos >= macro.startChar && charPos <= macro.endChar) {
-						String imageName = macro.target;
-						if (!imageName.isEmpty()) {
-							try {
-								URI docUri = new URI(uri);
-								File docFile = new File(docUri);
-								File parentDir = docFile.getParentFile();
+						if ("image".equals(macro.type)) {
+							String imageName = macro.target;
+							if (!imageName.isEmpty()) {
+								try {
+									URI docUri = new URI(uri);
+									File docFile = new File(docUri);
+									File parentDir = docFile.getParentFile();
 
-								File imgFile = new File(parentDir, "img/" + imageName);
-								if (!imgFile.exists()) {
-									imgFile = new File(parentDir, imageName);
-								}
+									File imgFile = new File(parentDir, "img/" + imageName);
+									if (!imgFile.exists()) {
+										imgFile = new File(parentDir, imageName);
+									}
 
-								Hover hover = new Hover();
-								if (imgFile.exists()) {
-									String imgUri = imgFile.toURI().toString();
-									String content = String.format("![%s](%s)", imageName, imgUri);
-									hover.setContents(new MarkupContent(MarkupKind.MARKDOWN, content));
-								} else {
-									String content = String.format("**Image not found:** `%s`\n\nChecked in:\n* `%s`\n* `%s`", 
-											imageName, new File(parentDir, "img/").getPath(), parentDir.getPath());
-									hover.setContents(new MarkupContent(MarkupKind.MARKDOWN, content));
+									Hover hover = new Hover();
+									if (imgFile.exists()) {
+										String imgUri = imgFile.toURI().toString();
+										String content = String.format("![%s](%s)", imageName, imgUri);
+										hover.setContents(new MarkupContent(MarkupKind.MARKDOWN, content));
+									} else {
+										String content = String.format("**Image not found:** `%s`\n\nChecked in:\n* `%s`\n* `%s`", 
+												imageName, new File(parentDir, "img/").getPath(), parentDir.getPath());
+										hover.setContents(new MarkupContent(MarkupKind.MARKDOWN, content));
+									}
+									return hover;
+								} catch (Exception e) {
 								}
-								return hover;
-							} catch (Exception e) {
+							}
+						} else if ("xref".equals(macro.type) && !macro.target.contains(".adoc")) {
+							String id = macro.target;
+							if (id.startsWith("#")) id = id.substring(1);
+							for (AsciidocDocumentModel.Heading h : model.getHeadings()) {
+								String hId = "_" + h.title.toLowerCase().replaceAll("[^a-z0-9]+", "_").replaceAll("^_+", "").replaceAll("_+$", "");
+								if ((h.id != null && h.id.equals(id)) || hId.equals(id)) {
+									Hover hover = new Hover();
+									String prefix = "";
+									for(int i = 0; i < h.level; i++) prefix += "#";
+									hover.setContents(new MarkupContent(MarkupKind.MARKDOWN, prefix + " " + h.title));
+									return hover;
+								}
 							}
 						}
 					}
@@ -572,10 +598,71 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 				} else if ("image".equals(macro.type)) {
 					Location loc = resolveFileLocation(uri, path);
 					if (loc == null) {
-						loc = resolveFileLocation(uri, "img/" + path);
+						String imagesdir = model.getAttributes().getOrDefault("imagesdir", "");
+						if (!imagesdir.isEmpty()) {
+							if (!imagesdir.endsWith("/")) imagesdir += "/";
+							loc = resolveFileLocation(uri, imagesdir + path);
+						} else {
+							loc = resolveFileLocation(uri, "img/" + path);
+						}
 					}
 					if (loc != null) {
 						return CompletableFuture.completedFuture(Either.forLeft(Collections.singletonList(loc)));
+					}
+				} else if ("xref".equals(macro.type)) {
+					if (!path.contains(".adoc")) {
+						// Internal xref
+						String id = path;
+						if (id.startsWith("#")) id = id.substring(1);
+						for (AsciidocDocumentModel.Anchor anchor : model.getAnchors()) {
+							if (anchor.id.equals(id)) {
+								Location loc = new Location(uri, new Range(new Position(anchor.line, 0), new Position(anchor.line, 0)));
+								return CompletableFuture.completedFuture(Either.forLeft(Collections.singletonList(loc)));
+							}
+						}
+						for (AsciidocDocumentModel.Heading h : model.getHeadings()) {
+							String hId = "_" + h.title.toLowerCase().replaceAll("[^a-z0-9]+", "_").replaceAll("^_+", "").replaceAll("_+$", "");
+							if ((h.id != null && h.id.equals(id)) || hId.equals(id)) {
+								Location loc = new Location(uri, new Range(new Position(h.line, 0), new Position(h.line, 0)));
+								return CompletableFuture.completedFuture(Either.forLeft(Collections.singletonList(loc)));
+							}
+						}
+					} else {
+						// External xref
+						String filename = path;
+						String id = null;
+						if (filename.contains("#")) {
+							id = filename.substring(filename.indexOf('#') + 1);
+							filename = filename.substring(0, filename.indexOf('#'));
+						}
+						Location loc = resolveFileLocation(uri, filename);
+						if (loc != null) {
+							if (id != null) {
+								AsciidocDocumentModel otherModel = docs.get(loc.getUri());
+								if (otherModel == null) {
+									try {
+										String otherContent = new String(java.nio.file.Files.readAllBytes(Paths.get(new URI(loc.getUri()))));
+										otherModel = new AsciidocDocumentModel(otherContent);
+									} catch (Exception e) {}
+								}
+								if (otherModel != null) {
+									for (AsciidocDocumentModel.Anchor anchor : otherModel.getAnchors()) {
+										if (anchor.id.equals(id)) {
+											loc.setRange(new Range(new Position(anchor.line, 0), new Position(anchor.line, 0)));
+											return CompletableFuture.completedFuture(Either.forLeft(Collections.singletonList(loc)));
+										}
+									}
+									for (AsciidocDocumentModel.Heading h : otherModel.getHeadings()) {
+										String hId = "_" + h.title.toLowerCase().replaceAll("[^a-z0-9]+", "_").replaceAll("^_+", "").replaceAll("_+$", "");
+										if ((h.id != null && h.id.equals(id)) || hId.equals(id)) {
+											loc.setRange(new Range(new Position(h.line, 0), new Position(h.line, 0)));
+											return CompletableFuture.completedFuture(Either.forLeft(Collections.singletonList(loc)));
+										}
+									}
+								}
+							}
+							return CompletableFuture.completedFuture(Either.forLeft(Collections.singletonList(loc)));
+						}
 					}
 				}
 			}
