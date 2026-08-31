@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension
+         point="org.eclipse.lsp4e.languageServer">
+      <server
+            class="com.vogella.asciidoc.lsp.client.ConnectionProviderSolution"
+            id="com.vogella.asciidoc.lsp.server"
+            label="Solution Server">
+      </server>
+      <contentTypeMapping
+            contentType="com.vogella.asciidoc.contenttype"
+            id="com.vogella.asciidoc.lsp.server">
+      </contentTypeMapping>
+   </extension>
+</plugin>
