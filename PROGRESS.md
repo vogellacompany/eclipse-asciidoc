@@ -11,7 +11,7 @@ On resume: `git status --short`, `git log --oneline -20`, then continue with the
 - [x] 1.3 Manifests, `build.properties`, `.project` files as specified (PLAN 3.3)
 - [x] 1.4 `AsciidocConnectionProvider` replaces the two old provider classes (PLAN 3.4)
 - [x] 1.5 Feature and update site (PLAN 3.5)
-- [ ] 1.6 CI workflow (PLAN 3.6); GitHub Pages is already enabled
+- [x] 1.6 CI workflow (PLAN 3.6); GitHub Pages is already enabled
 - [ ] 1.7 Exit criteria run and green (PLAN 3.7)
 
 ## Phase 2: two-tab editor
