@@ -331,8 +331,9 @@ public class AsciidocHtmlRenderer {
 		if (dm.matches()) {
 			out.append("<dl>\n");
 			while (i < lines.size()) {
+				int startI = i;
 				String l = lines.get(i).strip();
-				if (l.isEmpty() || isParagraphBreak(l)) break;
+				if (l.isEmpty() || (isParagraphBreak(l) && !DLIST_ITEM.matcher(l).matches())) break;
 				Matcher dlm = DLIST_ITEM.matcher(l);
 				if (dlm.matches()) {
 					out.append("<dt>").append(inline(dlm.group(1).strip())).append("</dt>\n");
@@ -341,6 +342,7 @@ public class AsciidocHtmlRenderer {
 					break;
 				}
 				i++;
+				if (i == startI) i++; // fail-safe
 			}
 			out.append("</dl>\n");
 			return i;
@@ -351,8 +353,9 @@ public class AsciidocHtmlRenderer {
 			out.append("<").append(tag).append(">\n");
 			
 			while (i < lines.size()) {
+				int startI = i;
 				String l = lines.get(i).strip();
-				if (l.isEmpty() || isParagraphBreak(l)) break;
+				if (l.isEmpty() || (isParagraphBreak(l) && !LIST_ITEM.matcher(l).matches())) break;
 				Matcher lm = LIST_ITEM.matcher(l);
 				if (lm.matches() && lm.group(1).equals(marker)) {
 					String content = lm.group(2).strip();
@@ -370,6 +373,7 @@ public class AsciidocHtmlRenderer {
 				} else {
 					break; // Different kind of list or smaller indent, pop back up
 				}
+				if (i == startI) break; // fail-safe to prevent infinite loop
 			}
 			out.append("</").append(tag).append(">\n");
 			return i;
