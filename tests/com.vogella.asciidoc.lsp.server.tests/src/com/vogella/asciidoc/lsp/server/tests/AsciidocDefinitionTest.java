@@ -107,4 +107,26 @@ class AsciidocDefinitionTest {
 		assertEquals(1, locations.size());
 		assertEquals(imgFile.toUri(), new java.net.URI(locations.get(0).getUri()));
 	}
+
+	@Test
+	void testIdDefinition() throws Exception {
+		String content = "== My Title\n\n<<_my_title>>\nxref:_my_title[]";
+		List<? extends Location> loc1 = getDefinition(content, 2, 4);
+		assertEquals(1, loc1.size());
+		assertEquals(0, loc1.get(0).getRange().getStart().getLine());
+
+		List<? extends Location> loc2 = getDefinition(content, 3, 6);
+		assertEquals(1, loc2.size());
+		assertEquals(0, loc2.get(0).getRange().getStart().getLine());
+	}
+
+	@Test
+	void testExternalIdDefinition() throws Exception {
+		Files.writeString(includedFile, "== Target Title\n");
+		String content = "xref:target.adoc#_target_title[]";
+		List<? extends Location> loc = getDefinition(content, 0, 10);
+		assertEquals(1, loc.size());
+		assertEquals(includedFile.toUri(), new java.net.URI(loc.get(0).getUri()));
+		assertEquals(0, loc.get(0).getRange().getStart().getLine());
+	}
 }

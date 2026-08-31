@@ -86,4 +86,17 @@ class AsciidocHoverTest {
 		// Current implementation returns null for the first line unless it's a macro
 		assertNull(hover, "Hover should be null on the first line by default");
 	}
+
+	@Test
+	void testIdHover() throws Exception {
+		String content = "== My Title\n\n<<_my_title>>";
+		Hover hover = getHover(content, 2, 4);
+
+		assertNotNull(hover);
+		MarkupContent markup = hover.getContents().getRight();
+		assertNotNull(markup);
+		
+		String markdown = markup.getValue();
+		assertTrue(markdown.contains("## My Title"));
+	}
 }

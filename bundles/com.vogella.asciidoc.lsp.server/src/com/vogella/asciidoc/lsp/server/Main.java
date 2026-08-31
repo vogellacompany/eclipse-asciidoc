@@ -18,8 +18,8 @@ public class Main {
 	public static void startServer(InputStream in, OutputStream out) throws InterruptedException, ExecutionException {
 		AsciidocLanguageServer server = new AsciidocLanguageServer();
 		Launcher<LanguageClient> l = LSPLauncher.createServerLauncher(server, in, out);
-		Future<?> startListening = l.startListening();									
 		server.setRemoteProxy(l.getRemoteProxy());
+		Future<?> startListening = l.startListening();									
 		startListening.get();
 	}
 }

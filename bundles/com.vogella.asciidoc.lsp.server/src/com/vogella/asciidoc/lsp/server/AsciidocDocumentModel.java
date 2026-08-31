@@ -30,11 +30,18 @@ public class AsciidocDocumentModel {
 		public final String id;
 		public final int line;
 		
-		public Heading(int level, String title, String id, int line) {
+		public Heading(int level, String title, String explicitId, int line) {
 			this.level = level;
 			this.title = title;
-			this.id = id;
 			this.line = line;
+			if (explicitId != null && !explicitId.isEmpty()) {
+				this.id = explicitId;
+			} else {
+				String lower = title.toLowerCase();
+				String replaced = lower.replaceAll("[^a-z0-9]+", "_");
+				replaced = replaced.replaceAll("^_+", "").replaceAll("_+$", "");
+				this.id = "_" + replaced;
+			}
 		}
 	}
 
@@ -117,9 +124,14 @@ public class AsciidocDocumentModel {
 					if (m.matches()) {
 						int level = m.group(1).length();
 						String title = m.group(2).trim();
-						String id = ""; 
-						// If prev line has anchor, it could be the id, but let's keep it simple for now or parse it if it's on the same line
-						headings.add(new Heading(level, title, id, lineNumber));
+						// generate auto id if previous line was not an anchor
+						String explicitId = null;
+						if (lineNumber > 0) {
+							String prev = lines.get(lineNumber - 1).text.trim();
+							Matcher a = ANCHOR_PATTERN.matcher(prev);
+							if (a.matches()) explicitId = a.group(1) != null ? a.group(1) : a.group(2);
+						}
+						headings.add(new Heading(level, title, explicitId, lineNumber));
 					}
 					
 					Matcher attr = ATTRIBUTE_PATTERN.matcher(lineText);

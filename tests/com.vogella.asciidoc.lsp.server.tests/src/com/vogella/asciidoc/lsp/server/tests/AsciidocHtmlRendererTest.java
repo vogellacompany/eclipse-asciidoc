@@ -112,7 +112,7 @@ public class AsciidocHtmlRendererTest {
 
         String text = "include::cycle1.adoc[]";
         String html = renderer.render(text, RenderOptions.simple(tempDir));
-        assertTrue(html.contains("<p class=\"error\">include not found: cycle1.adoc</p>"));
+        assertTrue(html.contains("<p class=\"error\">include cycle or depth limit reached: cycle1.adoc</p>"));
     }
 
     @Test

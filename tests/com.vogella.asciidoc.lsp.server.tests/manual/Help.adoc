@@ -1,4 +1,5 @@
 = Title
+:imagesdir: img
 ddd
 image::Sample.png[]
 

@@ -32,20 +32,20 @@ class AsciidocDiagnosticsTest {
 
 	private AsciidocLanguageServer server;
 	private AsciidocTextDocumentService service;
-	private List<Diagnostic> diagnostics;
+	private CompletableFuture<List<Diagnostic>> diagnosticsFuture;
 
 	@BeforeEach
 	void setUp() {
 		server = new AsciidocLanguageServer();
 		service = (AsciidocTextDocumentService) server.getTextDocumentService();
-		diagnostics = new ArrayList<>();
+		diagnosticsFuture = new CompletableFuture<>();
 		
 		server.setRemoteProxy(new LanguageClient() {
 			@Override
 			public void telemetryEvent(Object object) {}
 			@Override
 			public void publishDiagnostics(PublishDiagnosticsParams params) {
-				diagnostics = params.getDiagnostics();
+				diagnosticsFuture.complete(params.getDiagnostics());
 			}
 			@Override
 			public void showMessage(MessageParams messageParams) {}
@@ -59,7 +59,7 @@ class AsciidocDiagnosticsTest {
 	}
 
 	@Test
-	void testDiagnostics() throws IOException, InterruptedException {
+	void testDiagnostics() throws Exception {
 		Path doc = tempDir.resolve("doc.adoc");
 		String content = "== Title\n\n[[anchor1]]\n[[anchor1]]\ninclude::missing.adoc[]\nimage::missing.png[]\nxref:missing.adoc[]\nxref:missing_id[]\n";
 		Files.writeString(doc, content);
@@ -68,8 +68,7 @@ class AsciidocDiagnosticsTest {
 		openParams.setTextDocument(new TextDocumentItem(doc.toUri().toString(), "asciidoc", 1, content));
 		service.didOpen(openParams);
 		
-		// wait a bit for the async processing
-		Thread.sleep(500);
+		List<Diagnostic> diagnostics = diagnosticsFuture.get(5, java.util.concurrent.TimeUnit.SECONDS);
 		
 		assertEquals(5, diagnostics.size(), "Should find 5 diagnostics");
 		

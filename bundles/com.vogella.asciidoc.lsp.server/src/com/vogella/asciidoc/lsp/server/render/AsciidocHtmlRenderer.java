@@ -136,7 +136,7 @@ public class AsciidocHtmlRenderer {
 			}
 
 			// Block delimiters
-			if (stripped.equals("----") || stripped.equals("....") || stripped.equals("====") || stripped.equals("****") || stripped.equals("____") || stripped.equals("|===")) {
+			if (stripped.matches("-{4,}") || stripped.matches("\\.{4,}") || stripped.matches("={4,}") || stripped.matches("\\*{4,}") || stripped.matches("_{4,}") || stripped.equals("|===")) {
 				String delim = stripped;
 				i++;
 				List<String> blockLines = new ArrayList<>();
@@ -146,22 +146,22 @@ public class AsciidocHtmlRenderer {
 				}
 				if (i < lines.size()) i++;
 
-				if (delim.equals("----") || delim.equals("....")) {
+				if (delim.matches("-{4,}") || delim.matches("\\.{4,}")) {
 					String lang = pendingAttrs.get("lang");
 					if (pendingTitle != null) out.append("<div class=\"title\">").append(inline(pendingTitle)).append("</div>\n");
 					out.append("<pre>");
-					if (delim.equals("----")) {
+					if (delim.matches("-{4,}")) {
 						if (lang != null) out.append("<code class=\"language-").append(escape(lang)).append("\">");
 						else out.append("<code>");
 					}
 					for (String bl : blockLines) {
 						out.append(escape(bl)).append("\n");
 					}
-					if (delim.equals("----")) {
+					if (delim.matches("-{4,}")) {
 						out.append("</code>");
 					}
 					out.append("</pre>\n");
-				} else if (delim.equals("====")) {
+				} else if (delim.matches("={4,}")) {
 					String style = pendingAttrs.getOrDefault("style", "");
 					if (List.of("NOTE", "TIP", "IMPORTANT", "WARNING", "CAUTION").contains(style)) {
 						out.append("<div class=\"admonition ").append(style.toLowerCase()).append("\">");
@@ -172,12 +172,12 @@ public class AsciidocHtmlRenderer {
 					if (pendingTitle != null) out.append("<div class=\"title\">").append(inline(pendingTitle)).append("</div>\n");
 					out.append(renderBody(String.join("\n", blockLines), includeDepth, includedPaths));
 					out.append("</div>\n");
-				} else if (delim.equals("****")) {
+				} else if (delim.matches("\\*{4,}")) {
 					out.append("<aside class=\"sidebar\">\n");
 					if (pendingTitle != null) out.append("<div class=\"title\">").append(inline(pendingTitle)).append("</div>\n");
 					out.append(renderBody(String.join("\n", blockLines), includeDepth, includedPaths));
 					out.append("</aside>\n");
-				} else if (delim.equals("____")) {
+				} else if (delim.matches("_{4,}")) {
 					out.append("<blockquote>\n");
 					if (pendingTitle != null) out.append("<div class=\"title\">").append(inline(pendingTitle)).append("</div>\n");
 					out.append(renderBody(String.join("\n", blockLines), includeDepth, includedPaths));
@@ -272,11 +272,11 @@ public class AsciidocHtmlRenderer {
 			if (incPara.matches()) {
 				String target = incPara.group(1);
 				if (includeDepth >= 10) {
-					out.append("<p class=\"error\">include not found: ").append(escape(target)).append("</p>\n");
+					out.append("<p class=\"error\">include cycle or depth limit reached: ").append(escape(target)).append("</p>\n");
 				} else {
 					Path p = options.baseDir() != null ? options.baseDir().resolve(target).normalize() : Path.of(target);
 					if (includedPaths.contains(p)) {
-						out.append("<p class=\"error\">include not found: ").append(escape(target)).append("</p>\n");
+						out.append("<p class=\"error\">include cycle or depth limit reached: ").append(escape(target)).append("</p>\n");
 					} else {
 						Optional<String> txt = options.openDocuments().apply(p);
 						String content = null;
@@ -360,16 +360,20 @@ public class AsciidocHtmlRenderer {
 				if (lm.matches() && lm.group(1).equals(marker)) {
 					String content = lm.group(2).strip();
 					if (!isOl && content.startsWith("[x] ")) {
-						content = "<input type=\"checkbox\" disabled checked> " + content.substring(4);
+						content = "<input type=\"checkbox\" disabled checked> " + inline(content.substring(4));
 					} else if (!isOl && content.startsWith("[ ] ")) {
-						content = "<input type=\"checkbox\" disabled> " + content.substring(4);
+						content = "<input type=\"checkbox\" disabled> " + inline(content.substring(4));
 					} else {
 						content = inline(content);
 					}
 					out.append("<li>").append(content).append("</li>\n");
 					i++;
 				} else if (lm.matches() && lm.group(1).startsWith(marker.substring(0, 1)) && lm.group(1).length() > marker.length()) {
+					if (out.length() >= 6 && out.substring(out.length() - 6).equals("</li>\n")) {
+						out.setLength(out.length() - 6);
+					}
 					i = parseLists(lines, i, out, includeDepth, includedPaths);
+					out.append("</li>\n");
 				} else {
 					break; // Different kind of list or smaller indent, pop back up
 				}
@@ -385,7 +389,7 @@ public class AsciidocHtmlRenderer {
 		String s = line.strip();
 		if (s.startsWith("//")) return true;
 		if (s.equals("<<<") || s.equals("+") || s.equals("'''")) return true;
-		if (s.equals("----") || s.equals("....") || s.equals("====") || s.equals("****") || s.equals("____") || s.equals("|===")) return true;
+		if (s.matches("-{4,}") || s.matches("\\.{4,}") || s.matches("={4,}") || s.matches("\\*{4,}") || s.matches("_{4,}") || s.equals("|===")) return true;
 		if (ATTR_BLOCK.matcher(s).matches()) return true;
 		return HEADING.matcher(line).matches() || ATTRIBUTE_ENTRY.matcher(line).matches() || 
 			ANCHOR.matcher(line).matches() || ID_LINE.matcher(line).matches() ||
@@ -442,10 +446,10 @@ public class AsciidocHtmlRenderer {
 		
 		s = s.replaceAll("kbd:\\[(.+?)\\]", "<kbd>$1</kbd>");
 		s = s.replaceAll("btn:\\[(.+?)\\]", "<b class=\"button\">$1</b>");
-		s = s.replaceAll("menu:(.+?)\\[(.+?)\\]", "<span class=\"menu\">$1&gt;$2</span>"); // wait, just menu? "menu:File[Save]"
+		s = s.replaceAll("menu:(.+?)\\[(.+?)\\]", "<span class=\"menu\">$1&gt;$2</span>");
 
 		// Links
-		s = s.replaceAll("https?://[\\w\\./\\-?=#]+(?:\\[(.*?)\\])?", "\u0001$0\u0002");
+		s = s.replaceAll("https?://[\\w\\./\\-?=#&]+(?:\\[(.*?)\\])?", "\u0001$0\u0002");
 		s = s.replaceAll("link:([^\\[]+)\\[(.*?)\\]", "\u0003$1\u0004$2\u0005");
 		s = s.replaceAll("xref:([^\\[]+)\\[(.*?)\\]", "\u0006$1\u0004$2\u0005");
 		s = s.replaceAll("&lt;&lt;([^,&]+)(?:,(.*?))?&gt;&gt;", "\u0006$1\u0004$2\u0005");
@@ -454,7 +458,7 @@ public class AsciidocHtmlRenderer {
 		s = s.replaceAll("image:([^\\[]+)\\[(.*?)\\]", "\u0007$1\u0004$2\u0005");
 
 		// Restore links
-		Matcher urlM = Pattern.compile("\\u0001(https?://[\\w\\./\\-?=#]+)(?:\\[(.*?)\\])?\\u0002").matcher(s);
+		Matcher urlM = Pattern.compile("\\u0001(https?://[\\w\\./\\-?=#&]+)(?:\\[(.*?)\\])?\\u0002").matcher(s);
 		StringBuilder b = new StringBuilder();
 		while (urlM.find()) {
 			String url = urlM.group(1);
@@ -518,7 +522,7 @@ public class AsciidocHtmlRenderer {
 
 		// Restore literals
 		for (String lit : literals) {
-			s = s.replaceFirst("\u0000", lit);
+			s = s.replaceFirst("\u0000", Matcher.quoteReplacement(lit));
 		}
 
 		return s;

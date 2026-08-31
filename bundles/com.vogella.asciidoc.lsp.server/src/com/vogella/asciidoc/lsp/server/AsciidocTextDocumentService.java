@@ -6,7 +6,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.ArrayDeque;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
@@ -21,12 +20,6 @@ import java.util.stream.Collectors;
 import com.vogella.asciidoc.lsp.server.render.AsciidocHtmlRenderer;
 import com.vogella.asciidoc.lsp.server.render.RenderOptions;
 
-import org.eclipse.lsp4j.CodeAction;
-import org.eclipse.lsp4j.CodeActionKind;
-import org.eclipse.lsp4j.CodeActionParams;
-import org.eclipse.lsp4j.CodeLens;
-import org.eclipse.lsp4j.CodeLensParams;
-import org.eclipse.lsp4j.Command;
 import org.eclipse.lsp4j.CompletionItem;
 import org.eclipse.lsp4j.CompletionItemKind;
 import org.eclipse.lsp4j.CompletionList;
@@ -38,11 +31,8 @@ import org.eclipse.lsp4j.DidChangeTextDocumentParams;
 import org.eclipse.lsp4j.DidCloseTextDocumentParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
 import org.eclipse.lsp4j.DidSaveTextDocumentParams;
-import org.eclipse.lsp4j.DocumentFormattingParams;
 import org.eclipse.lsp4j.DocumentLink;
 import org.eclipse.lsp4j.DocumentLinkParams;
-import org.eclipse.lsp4j.DocumentOnTypeFormattingParams;
-import org.eclipse.lsp4j.DocumentRangeFormattingParams;
 import org.eclipse.lsp4j.DocumentSymbol;
 import org.eclipse.lsp4j.DocumentSymbolParams;
 import org.eclipse.lsp4j.FoldingRange;
@@ -57,11 +47,9 @@ import org.eclipse.lsp4j.MarkupKind;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.Range;
-import org.eclipse.lsp4j.RenameParams;
 import org.eclipse.lsp4j.SymbolInformation;
 import org.eclipse.lsp4j.SymbolKind;
 import org.eclipse.lsp4j.TextEdit;
-import org.eclipse.lsp4j.WorkspaceEdit;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.TextDocumentService;
 
@@ -236,13 +224,6 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 						item.setKind(CompletionItemKind.Reference);
 						completionItems.add(item);
 					}
-					String replaced = h.title.toLowerCase().replaceAll("[^a-z0-9]+", "_").replaceAll("^_+", "").replaceAll("_+$", "");
-					String genId = "_" + replaced;
-					CompletionItem item = new CompletionItem();
-					item.setLabel(genId);
-					item.setDetail(h.title);
-					item.setKind(CompletionItemKind.Reference);
-					completionItems.add(item);
 				}
 			}
 
@@ -561,8 +542,7 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 							String id = macro.target;
 							if (id.startsWith("#")) id = id.substring(1);
 							for (AsciidocDocumentModel.Heading h : model.getHeadings()) {
-								String hId = "_" + h.title.toLowerCase().replaceAll("[^a-z0-9]+", "_").replaceAll("^_+", "").replaceAll("_+$", "");
-								if ((h.id != null && h.id.equals(id)) || hId.equals(id)) {
+								if (h.id != null && h.id.equals(id)) {
 									Hover hover = new Hover();
 									String prefix = "";
 									for(int i = 0; i < h.level; i++) prefix += "#";
@@ -624,8 +604,7 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 							}
 						}
 						for (AsciidocDocumentModel.Heading h : model.getHeadings()) {
-							String hId = "_" + h.title.toLowerCase().replaceAll("[^a-z0-9]+", "_").replaceAll("^_+", "").replaceAll("_+$", "");
-							if ((h.id != null && h.id.equals(id)) || hId.equals(id)) {
+							if (h.id != null && h.id.equals(id)) {
 								Location loc = new Location(uri, new Range(new Position(h.line, 0), new Position(h.line, 0)));
 								return CompletableFuture.completedFuture(Either.forLeft(Collections.singletonList(loc)));
 							}
@@ -656,8 +635,7 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 										}
 									}
 									for (AsciidocDocumentModel.Heading h : otherModel.getHeadings()) {
-										String hId = "_" + h.title.toLowerCase().replaceAll("[^a-z0-9]+", "_").replaceAll("^_+", "").replaceAll("_+$", "");
-										if ((h.id != null && h.id.equals(id)) || hId.equals(id)) {
+										if (h.id != null && h.id.equals(id)) {
 											loc.setRange(new Range(new Position(h.line, 0), new Position(h.line, 0)));
 											return CompletableFuture.completedFuture(Either.forLeft(Collections.singletonList(loc)));
 										}
@@ -694,32 +672,11 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 	}
 
 
-	/**
-	 * Utility method to find the word under the cursor in a given line of text.
-	 */
-	private String getWordAtPosition(String lineContent, int character) {
-		// Define word boundaries (spaces or punctuation) to split the line into words.
-		// This example assumes simple word boundaries.
-		int start = character;
-		int end = character;
 
-		// Find the start of the word (left of the cursor)
-		while (start > 0 && Character.isLetterOrDigit(lineContent.charAt(start - 1))) {
-			start--;
-		}
-
-		// Find the end of the word (right of the cursor)
-		while (end < lineContent.length() && Character.isLetterOrDigit(lineContent.charAt(end))) {
-			end++;
-		}
-
-		// Extract the word
-		return lineContent.substring(start, end);
-	}
 
 	@Override
 	public CompletableFuture<CompletionItem> resolveCompletionItem(CompletionItem unresolved) {
-		return null;
+		return CompletableFuture.completedFuture(unresolved);
 	}
 
 
@@ -832,8 +789,6 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 
 		for (AsciidocDocumentModel.Heading h : model.getHeadings()) {
 			if (h.id != null && !h.id.isEmpty()) validIds.add(h.id);
-			String replaced = h.title.toLowerCase().replaceAll("[^a-z0-9]+", "_").replaceAll("^_+", "").replaceAll("_+$", "");
-			validIds.add("_" + replaced);
 		}
 
 		for (AsciidocDocumentModel.Macro macro : model.getMacros()) {
@@ -869,7 +824,7 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 					}
 				}
 			} else if ("xref".equals(macro.type) || "link".equals(macro.type)) {
-				if (macro.target.endsWith(".adoc") || (macro.target.contains(".adoc#") && !macro.target.startsWith("http"))) {
+				if (!macro.target.startsWith("http") && (macro.target.endsWith(".adoc") || macro.target.contains(".adoc#"))) {
 					if (baseDir != null) {
 						String filename = macro.target;
 						if (filename.contains("#")) {

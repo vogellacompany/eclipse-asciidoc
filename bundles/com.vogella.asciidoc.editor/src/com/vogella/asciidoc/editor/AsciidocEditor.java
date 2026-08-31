@@ -122,7 +122,7 @@ public class AsciidocEditor extends MultiPageEditorPart implements IGotoMarker {
 		setPageText(index, "Preview");
 	}
 
-	/** Renders the current document into the preview browser. No-op until phase 3. */
+	/** Renders the current document into the preview browser. */
 	protected void refreshPreview() {
 		if (browser == null || browser.isDisposed()) {
 			return;
