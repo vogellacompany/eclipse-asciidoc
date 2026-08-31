@@ -12,7 +12,13 @@ On resume: `git status --short`, `git log --oneline -20`, then continue with the
 - [x] 1.4 `AsciidocConnectionProvider` replaces the two old provider classes (PLAN 3.4)
 - [x] 1.5 Feature and update site (PLAN 3.5)
 - [x] 1.6 CI workflow (PLAN 3.6); GitHub Pages is already enabled
-- [ ] 1.7 Exit criteria run and green (PLAN 3.7)
+- [x] 1.7 Exit criteria run and green (PLAN 3.7)
+
+Notes (deviations from PLAN, required to make the build green against the pinned versions):
+- `AsciidocConnectionProvider` also implements `getErrorStream()` returning `null`; LSP4E 0.19.15 (in the 0.30.8 repo) declares it abstract.
+- Target platform adds `junit-platform-launcher`, `junit-platform-suite-api`, `junit-platform-suite-engine`; the tycho-surefire junit6 provider requires `org.junit.platform.suite.api`.
+- Removed `license-feature=""` from `feature.xml`; the empty value made p2 require a nonexistent `.feature.group`.
+- Remaining `grep` matches for the old ids are only inside `PLAN.md` (the rename map text); no code or config matches.
 
 ## Phase 2: two-tab editor
 

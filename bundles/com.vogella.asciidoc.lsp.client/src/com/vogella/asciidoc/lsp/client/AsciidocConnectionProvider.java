@@ -49,6 +49,11 @@ public class AsciidocConnectionProvider implements StreamConnectionProvider {
 	}
 
 	@Override
+	public InputStream getErrorStream() {
+		return null;
+	}
+
+	@Override
 	public void stop() {
 		if (listening != null) {
 			listening.cancel(true);
