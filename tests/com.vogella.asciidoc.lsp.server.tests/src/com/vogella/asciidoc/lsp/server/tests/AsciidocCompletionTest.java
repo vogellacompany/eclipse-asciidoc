@@ -78,10 +78,10 @@ class AsciidocCompletionTest {
 
 	@Test
 	void testImageCompletionInsideExistingBrackets() throws Exception {
-		// content: image::[]
-		// cursor at index 8: image::[|]
-		String content = "image::[]";
-		List<CompletionItem> completions = getCompletions(content, 0, 8);
+		// content: image::[] on line 1, cursor at index 8: image::[|]
+		// imagesdir points at img/, which is where Sample.png lives
+		String content = ":imagesdir: img\nimage::[]";
+		List<CompletionItem> completions = getCompletions(content, 1, 8);
 
 		CompletionItem item = findItem(completions, "Sample.png");
 		assertNotNull(item, "Sample.png completion not found");
@@ -97,10 +97,9 @@ class AsciidocCompletionTest {
 
 	@Test
 	void testImageCompletionWithPrefix() throws Exception {
-		// content: image::S
-		// cursor at index 8: image::S|
-		String content = "image::S";
-		List<CompletionItem> completions = getCompletions(content, 0, 8);
+		// content: image::S on line 1, cursor at index 8: image::S|
+		String content = ":imagesdir: img\nimage::S";
+		List<CompletionItem> completions = getCompletions(content, 1, 8);
 
 		CompletionItem item = findItem(completions, "Sample.png");
 		assertNotNull(item, "Sample.png completion not found");

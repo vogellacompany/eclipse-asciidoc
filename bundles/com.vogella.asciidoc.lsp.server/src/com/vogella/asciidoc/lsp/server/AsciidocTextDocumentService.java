@@ -138,7 +138,8 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 					endChar += 1;
 				}
 
-				List<String> images = scanForFiles(uri, "img", new String[] { ".png", ".jpg", ".jpeg", ".gif" });
+				List<String> images = scanForFiles(uri, model.getAttributes().getOrDefault("imagesdir", ""),
+						new String[] { ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp" });
 				for (String img : images) {
 					if (img.toLowerCase().startsWith(pathPrefix.toLowerCase())) {
 						CompletionItem item = new CompletionItem();
@@ -283,7 +284,7 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 			File docFile = new File(uri);
 			File parentDir = docFile.getParentFile();
 
-			File targetDir = new File(parentDir, subDir);
+			File targetDir = subDir.isEmpty() ? parentDir : new File(parentDir, subDir);
 			if (targetDir.exists() && targetDir.isDirectory()) {
 				File[] files = targetDir.listFiles((dir, name) -> {
 					for (String ext : extensions) {
@@ -412,15 +413,11 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 					if (filename.contains("#")) filename = filename.substring(0, filename.indexOf('#'));
 					Location loc = resolveFileLocation(uri, filename);
 					if (loc != null) targetUri = loc.getUri();
+				} else if ("image".equals(type)) {
+					File imageFile = resolveImageFile(uri, model, path);
+					if (imageFile != null) targetUri = imageFile.toPath().normalize().toUri().toString();
 				} else {
 					Location loc = resolveFileLocation(uri, path);
-					if (loc == null && "image".equals(type)) {
-						String imagesdir = model.getAttributes().getOrDefault("imagesdir", "");
-						if (!imagesdir.isEmpty()) {
-							if (!imagesdir.endsWith("/")) imagesdir += "/";
-							loc = resolveFileLocation(uri, imagesdir + path);
-						}
-					}
 					if (loc != null) targetUri = loc.getUri();
 				}
 
@@ -513,20 +510,10 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 							String imageName = macro.target;
 							if (!imageName.isEmpty()) {
 								try {
-									URI docUri = new URI(uri);
-									File docFile = new File(docUri);
-									File parentDir = docFile.getParentFile();
-
-									File imgFile = new File(parentDir, imageName);
-									if (!imgFile.exists()) {
-										String imagesdir = model.getAttributes().getOrDefault("imagesdir", "");
-										if (!imagesdir.isEmpty()) {
-											imgFile = new File(parentDir, imagesdir + "/" + imageName);
-										}
-									}
+									File imgFile = resolveImageFile(uri, model, imageName);
 
 									Hover hover = new Hover();
-									if (imgFile.exists()) {
+									if (imgFile != null) {
 										String imgUri = imgFile.toURI().toString();
 										String content = String.format("![%s](%s)", imageName, imgUri);
 										hover.setContents(new MarkupContent(MarkupKind.MARKDOWN, content));
@@ -579,15 +566,10 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 						return CompletableFuture.completedFuture(Either.forLeft(Collections.singletonList(loc)));
 					}
 				} else if ("image".equals(macro.type)) {
-					Location loc = resolveFileLocation(uri, path);
-					if (loc == null) {
-						String imagesdir = model.getAttributes().getOrDefault("imagesdir", "");
-						if (!imagesdir.isEmpty()) {
-							if (!imagesdir.endsWith("/")) imagesdir += "/";
-							loc = resolveFileLocation(uri, imagesdir + path);
-						}
-					}
-					if (loc != null) {
+					File imageFile = resolveImageFile(uri, model, path);
+					if (imageFile != null) {
+						Location loc = new Location(imageFile.toPath().normalize().toUri().toString(),
+								new Range(new Position(0, 0), new Position(0, 0)));
 						return CompletableFuture.completedFuture(Either.forLeft(Collections.singletonList(loc)));
 					}
 				} else if ("xref".equals(macro.type)) {
@@ -648,6 +630,19 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 		}
 
 		return CompletableFuture.completedFuture(Either.forLeft(Collections.emptyList()));
+	}
+
+	/** Resolves an image target against the document directory and the {@code imagesdir} attribute. */
+	private File resolveImageFile(String documentUri, AsciidocDocumentModel model, String target) {
+		try {
+			File parentDir = new File(new URI(documentUri)).getParentFile();
+			String imagesdir = model.getAttributes().getOrDefault("imagesdir", "");
+			File dir = imagesdir.isEmpty() ? parentDir : new File(parentDir, imagesdir);
+			File file = new File(dir, target);
+			return file.exists() ? file : null;
+		} catch (Exception e) {
+			return null;
+		}
 	}
 
 	private Location resolveFileLocation(String baseUri, String relativePath) {
