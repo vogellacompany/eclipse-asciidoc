@@ -24,8 +24,12 @@ public class AsciidocDocumentModel {
 	// List to store all lines from the document
 	private final List<DocumentLine> lines = new ArrayList<>();
 
+	// Full text of the document as received
+	private final String text;
+
 	// Constructor to read the text and store lines
 	public AsciidocDocumentModel(String text) {
+		this.text = text;
 		try (Reader r = new StringReader(text); BufferedReader reader = new BufferedReader(r)) {
 
 			String lineText;
@@ -38,6 +42,11 @@ public class AsciidocDocumentModel {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+
+	// The full text of the document
+	public String getText() {
+		return text;
 	}
 
 	// Method to get the content of each line by line number

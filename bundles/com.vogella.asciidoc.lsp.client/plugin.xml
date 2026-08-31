@@ -5,7 +5,8 @@
       <server
             class="com.vogella.asciidoc.lsp.client.AsciidocConnectionProvider"
             id="com.vogella.asciidoc.lsp.server"
-            label="AsciiDoc Language Server">
+            label="AsciiDoc Language Server"
+            serverInterface="com.vogella.asciidoc.lsp.server.AsciidocLanguageServerApi">
       </server>
       <contentTypeMapping
             contentType="com.vogella.asciidoc.contenttype"

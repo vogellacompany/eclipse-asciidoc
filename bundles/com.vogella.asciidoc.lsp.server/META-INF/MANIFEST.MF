@@ -6,6 +6,7 @@ Bundle-Version: 1.0.0.qualifier
 Bundle-Vendor: vogella GmbH
 Bundle-RequiredExecutionEnvironment: JavaSE-25
 Automatic-Module-Name: com.vogella.asciidoc.lsp.server
-Export-Package: com.vogella.asciidoc.lsp.server
+Export-Package: com.vogella.asciidoc.lsp.server,
+ com.vogella.asciidoc.lsp.server.render
 Require-Bundle: org.eclipse.lsp4j,
  org.eclipse.lsp4j.jsonrpc

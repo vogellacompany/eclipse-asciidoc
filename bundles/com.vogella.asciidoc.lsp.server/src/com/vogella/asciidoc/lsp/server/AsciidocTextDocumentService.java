@@ -2,6 +2,8 @@ package com.vogella.asciidoc.lsp.server;
 
 import java.io.File;
 import java.net.URI;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.ArrayDeque;
 import java.util.Arrays;
@@ -10,10 +12,14 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import com.vogella.asciidoc.lsp.server.render.AsciidocHtmlRenderer;
+import com.vogella.asciidoc.lsp.server.render.RenderOptions;
 
 import org.eclipse.lsp4j.CodeAction;
 import org.eclipse.lsp4j.CodeActionKind;
@@ -63,6 +69,42 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 
 	public AsciidocTextDocumentService(AsciidocLanguageServer languageServer) {
 		this.languageServer = languageServer;
+	}
+
+	/** Renders the in-memory content of the document to a complete HTML page. */
+	public CompletableFuture<String> preview(String uri) {
+		return CompletableFuture.supplyAsync(() -> {
+			AsciidocDocumentModel model = docs.get(uri);
+			if (model == null) {
+				return AsciidocHtmlRenderer.errorPage("Document is not open");
+			}
+			Path baseDir = null;
+			try {
+				Path path = Paths.get(URI.create(uri));
+				baseDir = path.getParent();
+			} catch (Exception e) {
+				// no base directory, includes and images resolve to nothing
+			}
+			RenderOptions renderOptions = new RenderOptions(baseDir, this::openDocumentText, true);
+			return new AsciidocHtmlRenderer().render(model.getText(), renderOptions);
+		});
+	}
+
+	private Optional<String> openDocumentText(Path path) {
+		Path key = path.toAbsolutePath().normalize();
+		synchronized (docs) {
+			for (Map.Entry<String, AsciidocDocumentModel> entry : docs.entrySet()) {
+				try {
+					Path open = Paths.get(URI.create(entry.getKey())).toAbsolutePath().normalize();
+					if (open.equals(key)) {
+						return Optional.of(entry.getValue().getText());
+					}
+				} catch (Exception e) {
+					// ignore documents with a non-file uri
+				}
+			}
+		}
+		return Optional.empty();
 	}
 
 	@Override
