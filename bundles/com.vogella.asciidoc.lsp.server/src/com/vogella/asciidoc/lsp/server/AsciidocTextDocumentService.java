@@ -198,32 +198,97 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 				return Either.forLeft(completionItems);
 			}
 
-			// 3. Default proposals
-			// Header completions only at the beginning of the line
-			if (prefixLine.trim().isEmpty()) {
-				completionItems.add(createCompletionItem("= Title", CompletionItemKind.Snippet, "= Title"));
-				completionItems.add(createCompletionItem("== Subtitle", CompletionItemKind.Snippet, "== Subtitle"));
+			// 3. New Proposals
+			// Line start or after typing letters at line start
+			if (prefixLine.matches("^[a-zA-Z]*$")) {
+				completionItems.add(createSnippetItem("NOTE: ", "NOTE: "));
+				completionItems.add(createSnippetItem("TIP: ", "TIP: "));
+				completionItems.add(createSnippetItem("IMPORTANT: ", "IMPORTANT: "));
+				completionItems.add(createSnippetItem("WARNING: ", "WARNING: "));
+				completionItems.add(createSnippetItem("CAUTION: ", "CAUTION: "));
+				completionItems.add(createSnippetItem("image::", "image::${1:file}[]"));
+				completionItems.add(createSnippetItem("include::", "include::${1:file}[]"));
+				completionItems.add(createSnippetItem("[source,java]", "[source,${1:java}]\n----\n$0\n----"));
+				completionItems.add(createSnippetItem("|===", "|===\n$0\n|==="));
+				completionItems.add(createSnippetItem(".Title", ".${1:Title}"));
+				completionItems.add(createSnippetItem("= Title", "= ${1:Title}"));
+				completionItems.add(createSnippetItem("== Title", "== ${1:Title}"));
 			}
 
-			// Other completions available everywhere
-			completionItems.add(createCompletionItem("image::", CompletionItemKind.Snippet, "image::"));
-			completionItems.add(createCompletionItem("include::", CompletionItemKind.Snippet, "include::"));
-			
-			CompletionItem sourceBlock = new CompletionItem();
-			sourceBlock.setLabel("Source Code Block");
-			sourceBlock.setKind(CompletionItemKind.Snippet);
-			sourceBlock.setInsertText("[source, java]\n----\n\n----");
-			completionItems.add(sourceBlock);
+			// After << or xref:
+			Pattern refPattern = Pattern.compile("(<<|xref:)([^>\\[]*)$");
+			Matcher refMatcher = refPattern.matcher(prefixLine);
+			if (refMatcher.find()) {
+				for (AsciidocDocumentModel.Anchor anchor : model.getAnchors()) {
+					CompletionItem item = new CompletionItem();
+					item.setLabel(anchor.id);
+					item.setKind(CompletionItemKind.Reference);
+					completionItems.add(item);
+				}
+				for (AsciidocDocumentModel.Heading h : model.getHeadings()) {
+					if (h.id != null && !h.id.isEmpty()) {
+						CompletionItem item = new CompletionItem();
+						item.setLabel(h.id);
+						item.setDetail(h.title);
+						item.setKind(CompletionItemKind.Reference);
+						completionItems.add(item);
+					}
+					String replaced = h.title.toLowerCase().replaceAll("[^a-z0-9]+", "_").replaceAll("^_+", "").replaceAll("_+$", "");
+					String genId = "_" + replaced;
+					CompletionItem item = new CompletionItem();
+					item.setLabel(genId);
+					item.setDetail(h.title);
+					item.setKind(CompletionItemKind.Reference);
+					completionItems.add(item);
+				}
+			}
+
+			// After {
+			Pattern varPattern = Pattern.compile("\\{([^}]*)$");
+			Matcher varMatcher = varPattern.matcher(prefixLine);
+			if (varMatcher.find()) {
+				for (String attrName : model.getAttributes().keySet()) {
+					CompletionItem item = new CompletionItem();
+					item.setLabel(attrName);
+					item.setKind(CompletionItemKind.Variable);
+					completionItems.add(item);
+				}
+			}
+
+			// After link: or xref: followed by path prefix
+			Pattern linkPattern = Pattern.compile("(link:|xref:)([^>\\[\\s]*)(\\[)?$");
+			Matcher linkMatcher = linkPattern.matcher(prefixLine);
+			if (linkMatcher.find()) {
+				String pathPrefix = linkMatcher.group(2);
+				boolean hasOpeningInPrefix = linkMatcher.group(3) != null;
+				int startChar = charPos - pathPrefix.length() - (hasOpeningInPrefix ? 1 : 0);
+				int endChar = charPos;
+				if (suffixLine.startsWith("[]")) {
+					endChar += 2;
+				} else if (suffixLine.startsWith("]")) {
+					endChar += 1;
+				}
+				String dirPart = "";
+				String filePrefix = pathPrefix;
+				int lastSlash = pathPrefix.lastIndexOf('/');
+				if (lastSlash >= 0) {
+					dirPart = pathPrefix.substring(0, lastSlash + 1);
+					filePrefix = pathPrefix.substring(lastSlash + 1);
+				}
+				List<CompletionItem> pathCompletions = getPathCompletions(uri, dirPart, filePrefix, lineNum, startChar, endChar);
+				completionItems.addAll(pathCompletions);
+			}
 
 			return Either.forLeft(completionItems);
 		});
 	}
 
-	private CompletionItem createCompletionItem(String label, CompletionItemKind kind, String insertText) {
+	private CompletionItem createSnippetItem(String label, String insertText) {
 		CompletionItem item = new CompletionItem();
 		item.setLabel(label);
-		item.setKind(kind);
+		item.setKind(CompletionItemKind.Snippet);
 		item.setInsertText(insertText);
+		item.setInsertTextFormat(org.eclipse.lsp4j.InsertTextFormat.Snippet);
 		return item;
 	}
 

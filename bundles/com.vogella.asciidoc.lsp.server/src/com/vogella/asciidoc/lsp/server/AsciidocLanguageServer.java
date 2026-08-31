@@ -31,7 +31,9 @@ public class AsciidocLanguageServer implements AsciidocLanguageServerApi {
 	public CompletableFuture<InitializeResult> initialize(InitializeParams params) {
 		final InitializeResult res = new InitializeResult(new ServerCapabilities());
 		res.getCapabilities().setTextDocumentSync(TextDocumentSyncKind.Full);
-		res.getCapabilities().setCompletionProvider(new CompletionOptions());
+		CompletionOptions completionOptions = new CompletionOptions();
+		completionOptions.setTriggerCharacters(java.util.Arrays.asList("<", "{", ":", "/"));
+		res.getCapabilities().setCompletionProvider(completionOptions);
 		res.getCapabilities().setDocumentSymbolProvider(Boolean.TRUE);
 		res.getCapabilities().setHoverProvider(Boolean.TRUE);
 		res.getCapabilities().setDefinitionProvider(Boolean.TRUE);

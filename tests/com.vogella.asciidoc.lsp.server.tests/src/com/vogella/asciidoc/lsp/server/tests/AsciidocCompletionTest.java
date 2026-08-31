@@ -259,6 +259,48 @@ class AsciidocCompletionTest {
 		assertTrue(item100.getSortText().startsWith("0_"), "Should have correct sortText prefix");
 	}
 
+	@Test
+	void testLineStartCompletions() throws Exception {
+		String content = "N";
+		List<CompletionItem> completions = getCompletions(content, 0, 1);
+
+		CompletionItem item = findItem(completions, "NOTE: ");
+		assertNotNull(item, "NOTE: completion not found");
+		assertEquals("NOTE: ", item.getInsertText());
+		assertEquals(CompletionItemKind.Snippet, item.getKind());
+	}
+
+	@Test
+	void testReferenceCompletions() throws Exception {
+		String content = "== Heading\n<<";
+		List<CompletionItem> completions = getCompletions(content, 1, 2);
+
+		CompletionItem item = findItem(completions, "_heading");
+		assertNotNull(item, "Heading reference completion not found");
+		assertEquals(CompletionItemKind.Reference, item.getKind());
+		assertEquals("Heading", item.getDetail());
+	}
+
+	@Test
+	void testVariableCompletions() throws Exception {
+		String content = ":foo: bar\n{";
+		List<CompletionItem> completions = getCompletions(content, 1, 1);
+
+		CompletionItem item = findItem(completions, "foo");
+		assertNotNull(item, "Variable completion not found");
+		assertEquals(CompletionItemKind.Variable, item.getKind());
+	}
+
+	@Test
+	void testLinkFileCompletions() throws Exception {
+		String content = "link:d";
+		List<CompletionItem> completions = getCompletions(content, 0, 6);
+
+		CompletionItem docsDir = findItem(completions, "docs/");
+		assertNotNull(docsDir, "docs/ directory completion not found for link");
+		assertEquals(CompletionItemKind.Folder, docsDir.getKind());
+	}
+
 	private CompletionItem findItem(List<CompletionItem> items, String label) {
 		return items.stream().filter(i -> i.getLabel().equals(label)).findFirst().orElse(null);
 	}
