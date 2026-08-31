@@ -3,8 +3,10 @@ package com.vogella.asciidoc.lsp.server;
 import java.io.File;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -351,32 +353,107 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 	public CompletableFuture<List<Either<SymbolInformation, DocumentSymbol>>> documentSymbol(
 			DocumentSymbolParams params) {
 		return CompletableFuture.supplyAsync(() -> {
-			// Create a list to hold the symbols
-			List<Either<SymbolInformation, DocumentSymbol>> symbols = new ArrayList<>();
+			String uri = params.getTextDocument().getUri();
+			AsciidocDocumentModel model = docs.get(uri);
+			if (model == null) {
+				return Collections.emptyList();
+			}
+			List<String> lines = model.getLines();
 
-			// Create a symbol for a class
-			DocumentSymbol classSymbol = new DocumentSymbol();
-			classSymbol.setName("MyClass");
-			classSymbol.setKind(SymbolKind.Class);
-			classSymbol.setRange(new Range(new Position(0, 0), new Position(0, 10)));
-			classSymbol.setSelectionRange(new Range(new Position(0, 0), new Position(0, 10)));
+			List<int[]> headings = new ArrayList<>();
+			List<String> titles = new ArrayList<>();
+			String openDelimiter = null;
+			for (int i = 0; i < lines.size(); i++) {
+				String line = lines.get(i);
+				String delim = blockDelimiterToken(line);
+				if (openDelimiter != null) {
+					if (delim != null && delim.equals(openDelimiter)) {
+						openDelimiter = null;
+					}
+					continue;
+				}
+				if (delim != null) {
+					openDelimiter = delim;
+					continue;
+				}
+				Matcher m = HEADING_PATTERN.matcher(line);
+				if (m.matches()) {
+					headings.add(new int[] { i, m.group(1).length() });
+					titles.add(m.group(2).trim());
+				}
+			}
 
-			// Create a symbol for a method inside the class
-			DocumentSymbol methodSymbol = new DocumentSymbol();
-			methodSymbol.setName("myMethod");
-			methodSymbol.setKind(SymbolKind.Method);
-			methodSymbol.setRange(new Range(new Position(1, 0), new Position(1, 10)));
-			methodSymbol.setSelectionRange(new Range(new Position(1, 0), new Position(1, 10)));
+			int lineCount = lines.size();
+			List<DocumentSymbol> roots = new ArrayList<>();
+			Deque<DocumentSymbol> stack = new ArrayDeque<>();
+			Deque<Integer> levelStack = new ArrayDeque<>();
+			for (int h = 0; h < headings.size(); h++) {
+				int startLine = headings.get(h)[0];
+				int level = headings.get(h)[1];
+				int endLine = lineCount - 1;
+				for (int k = h + 1; k < headings.size(); k++) {
+					if (headings.get(k)[1] <= level) {
+						endLine = headings.get(k)[0] - 1;
+						break;
+					}
+				}
+				String headingLine = lines.get(startLine);
+				int endChar = endLine >= 0 && endLine < lineCount ? lines.get(endLine).length() : 0;
 
-			// Add the method symbol as a child of the class symbol
-			classSymbol.setChildren(List.of(methodSymbol));
+				DocumentSymbol symbol = new DocumentSymbol();
+				symbol.setName(titles.get(h));
+				symbol.setKind(SymbolKind.Module);
+				symbol.setRange(new Range(new Position(startLine, 0),
+						new Position(Math.max(endLine, startLine), endChar)));
+				symbol.setSelectionRange(
+						new Range(new Position(startLine, 0), new Position(startLine, headingLine.length())));
+				symbol.setChildren(new ArrayList<>());
 
-			// Add the class symbol to the list of symbols
-			symbols.add(Either.forRight(classSymbol));
+				while (!levelStack.isEmpty() && levelStack.peek() >= level) {
+					stack.pop();
+					levelStack.pop();
+				}
+				if (stack.isEmpty()) {
+					roots.add(symbol);
+				} else {
+					stack.peek().getChildren().add(symbol);
+				}
+				stack.push(symbol);
+				levelStack.push(level);
+			}
 
-			// Return the list of symbols
-			return symbols;
+			return roots.stream().map(Either::<SymbolInformation, DocumentSymbol>forRight)
+					.collect(Collectors.toList());
 		});
+	}
+
+	private static final Pattern HEADING_PATTERN = Pattern.compile("^(={1,6})\\s+(.+?)\\s*(=+\\s*)?$");
+
+	/** Returns a canonical token for a delimited block line, or null when the line is not a delimiter. */
+	private static String blockDelimiterToken(String line) {
+		String t = line.strip();
+		if (t.matches("-{4,}")) {
+			return "-";
+		}
+		if (t.matches("\\.{4,}")) {
+			return ".";
+		}
+		if (t.matches("/{4,}")) {
+			return "/";
+		}
+		if (t.matches("={4,}")) {
+			return "=";
+		}
+		if (t.matches("\\*{4,}")) {
+			return "*";
+		}
+		if (t.matches("_{4,}")) {
+			return "_";
+		}
+		if (t.matches("\\|={3,}")) {
+			return "|";
+		}
+		return null;
 	}
 
 	@Override

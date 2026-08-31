@@ -25,7 +25,7 @@ Notes (deviations from PLAN, required to make the build green against the pinned
 - [x] 2.1 Editor registration in `plugin.xml` (PLAN 4.1)
 - [x] 2.2 `AsciidocEditor` with Source and Preview pages (PLAN 4.2)
 - [x] 2.3 `AsciidocEditorContributor` (PLAN 4.3)
-- [ ] 2.4 Real outline via `documentSymbol` plus test (PLAN 4.4)
+- [x] 2.4 Real outline via `documentSymbol` plus test (PLAN 4.4)
 - [ ] 2.5 Exit criteria run and green (PLAN 4.5)
 
 ## Phase 3: preview with images
