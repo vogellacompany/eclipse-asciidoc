@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feature
+      id="com.vogella.asciidoc.feature"
+      label="AsciiDoc Editor"
+      version="1.0.0.qualifier"
+      provider-name="vogella GmbH"
+      license-feature="">
+
+   <description>
+      AsciiDoc editor for the Eclipse IDE with syntax highlighting, content assist, validation, hyperlinks and an HTML preview, driven by a language server.
+   </description>
+
+   <copyright>
+      Copyright (c) 2026 vogella GmbH
+   </copyright>
+
+   <license url="https://www.eclipse.org/legal/epl-2.0/">
+      Eclipse Public License 2.0
+   </license>
+
+   <plugin id="com.vogella.asciidoc.editor" version="0.0.0"/>
+   <plugin id="com.vogella.asciidoc.lsp.server" version="0.0.0"/>
+   <plugin id="com.vogella.asciidoc.lsp.client" version="0.0.0"/>
+</feature>

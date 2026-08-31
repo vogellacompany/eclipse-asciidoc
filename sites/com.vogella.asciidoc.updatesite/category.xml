@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<site>
+   <feature id="com.vogella.asciidoc.feature">
+      <category name="asciidoc"/>
+   </feature>
+   <category-def name="asciidoc" label="AsciiDoc Editor">
+      <description>AsciiDoc editing support for the Eclipse IDE, provided by vogella GmbH.</description>
+   </category-def>
+   <repository-reference location="https://download.eclipse.org/releases/2026-06" enabled="true"/>
+   <repository-reference location="https://download.eclipse.org/lsp4e/releases/0.30.8/" enabled="true"/>
+   <repository-reference location="https://download.eclipse.org/tm4e/releases/0.18.0/" enabled="true"/>
+</site>
