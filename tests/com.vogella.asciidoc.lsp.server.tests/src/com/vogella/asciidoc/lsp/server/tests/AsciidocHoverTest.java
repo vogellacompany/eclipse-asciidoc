@@ -52,7 +52,12 @@ class AsciidocHoverTest {
 
 	@Test
 	void testImageHover() throws Exception {
-		String content = "\nimage::Sample.png[]";
+		Path imgDir = tempDir.resolve("img");
+		if (!Files.exists(imgDir)) Files.createDirectories(imgDir);
+		Path imgFile = imgDir.resolve("Sample.png");
+		if (!Files.exists(imgFile)) Files.createFile(imgFile);
+
+		String content = ":imagesdir: img\nimage::Sample.png[]";
 		// Hover on line 1 over the image macro
 		Hover hover = getHover(content, 1, 10);
 

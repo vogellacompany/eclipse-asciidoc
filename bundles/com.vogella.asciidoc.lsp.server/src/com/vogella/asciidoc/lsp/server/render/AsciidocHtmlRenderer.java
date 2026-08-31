@@ -2,7 +2,6 @@
 package com.vogella.asciidoc.lsp.server.render;
 
 import java.io.IOException;
-import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -449,7 +448,7 @@ public class AsciidocHtmlRenderer {
 		s = s.replaceAll("menu:(.+?)\\[(.+?)\\]", "<span class=\"menu\">$1&gt;$2</span>");
 
 		// Links
-		s = s.replaceAll("https?://[\\w\\./\\-?=#&]+(?:\\[(.*?)\\])?", "\u0001$0\u0002");
+		s = s.replaceAll("https?://(?:[\\w\\./\\-?=#]|&amp;)+(?:\\[(.*?)\\])?", "\u0001$0\u0002");
 		s = s.replaceAll("link:([^\\[]+)\\[(.*?)\\]", "\u0003$1\u0004$2\u0005");
 		s = s.replaceAll("xref:([^\\[]+)\\[(.*?)\\]", "\u0006$1\u0004$2\u0005");
 		s = s.replaceAll("&lt;&lt;([^,&]+)(?:,(.*?))?&gt;&gt;", "\u0006$1\u0004$2\u0005");
@@ -458,10 +457,10 @@ public class AsciidocHtmlRenderer {
 		s = s.replaceAll("image:([^\\[]+)\\[(.*?)\\]", "\u0007$1\u0004$2\u0005");
 
 		// Restore links
-		Matcher urlM = Pattern.compile("\\u0001(https?://[\\w\\./\\-?=#&]+)(?:\\[(.*?)\\])?\\u0002").matcher(s);
+		Matcher urlM = Pattern.compile("\\u0001(https?://(?:[\\w\\./\\-?=#]|&amp;)+)(?:\\[(.*?)\\])?\\u0002").matcher(s);
 		StringBuilder b = new StringBuilder();
 		while (urlM.find()) {
-			String url = urlM.group(1);
+			String url = urlM.group(1).replace("&amp;", "&");
 			String txt = urlM.group(2) != null && !urlM.group(2).isEmpty() ? urlM.group(2) : url;
 			urlM.appendReplacement(b, Matcher.quoteReplacement("<a href=\"" + url + "\">" + txt + "</a>"));
 		}

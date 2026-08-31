@@ -28,7 +28,7 @@ Notes (deviations from PLAN, required to make the build green against the pinned
 - [x] 2.4 Real outline via `documentSymbol` plus test (PLAN 4.4)
 - [x] 2.5 Exit criteria run and green (PLAN 4.5)
 
-Note: `./mvnw -ntp clean verify` is green (all bundles build, 23 server tests pass). The 5 manual runtime-workbench checks (open `.adoc`, `Ctrl+Space` after `image::`, `F3` on `include::`, Outline view, `Ctrl+Z`/`Ctrl+F`/`Ctrl+S`) require a launched runtime workbench and are left for the human; phase 5 adds an automated UI test that covers editor open, completion and preview.
+Note: `./mvnw -ntp clean verify` is green (all bundles build, 23 server tests pass). The 5 manual runtime-workbench checks (open `.adoc`, `Ctrl+Space` after `image::`, `F3` on `include::`, Outline view, `Ctrl+Z`/`Ctrl+F`/`Ctrl+S`) require a launched runtime workbench and are left for the human; phase 5 was dropped as an optional time-boxed task.
 
 ## Phase 3: preview with images
 
@@ -49,14 +49,13 @@ Note: `./mvnw -ntp clean verify` is green (all bundles build, 23 server tests pa
 - [x] 4.6 Folding plus test (PLAN 6.5)
 - [x] 4.7 Exit criteria run and green (PLAN 6.7)
 
-## Phase 5
 
 - [x] 5.1 `com.vogella.asciidoc.editor.tests` removed, Phase 5 dropped.
 
 ## Phase 6: documentation
 
 - [x] 6.1 `README.md` (PLAN 8)
-- [x] 6.2 `docs/features.adoc` (PLAN 8)
+- [ ] 6.2 `docs/features.adoc` (PLAN 8)
 
 ## Handover notes
 
@@ -66,5 +65,4 @@ Notes for Phase 3:
 - Step 3.3 message was used for the editor preview wiring (step 3.4), and inline syntax (step 3.3) was committed with step 3.2.
 - Added fallback fail-safe to parseLists in AsciidocHtmlRenderer to prevent infinite loops.
 
-## Phase 5
 - Phase 5 is dropped completely as per the timebox rules.

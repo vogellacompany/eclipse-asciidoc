@@ -99,9 +99,9 @@ class AsciidocDefinitionTest {
 		Path imgFile = imgDir.resolve("Sample.png");
 		Files.createFile(imgFile);
 
-		String content = "image::Sample.png[]";
+		String content = ":imagesdir: img\nimage::Sample.png[]";
 		// Cursor on "Sample.png"
-		List<? extends Location> locations = getDefinition(content, 0, 10);
+		List<? extends Location> locations = getDefinition(content, 1, 10);
 
 		assertNotNull(locations);
 		assertEquals(1, locations.size());

@@ -419,8 +419,6 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 						if (!imagesdir.isEmpty()) {
 							if (!imagesdir.endsWith("/")) imagesdir += "/";
 							loc = resolveFileLocation(uri, imagesdir + path);
-						} else {
-							loc = resolveFileLocation(uri, "img/" + path);
 						}
 					}
 					if (loc != null) targetUri = loc.getUri();
@@ -519,9 +517,12 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 									File docFile = new File(docUri);
 									File parentDir = docFile.getParentFile();
 
-									File imgFile = new File(parentDir, "img/" + imageName);
+									File imgFile = new File(parentDir, imageName);
 									if (!imgFile.exists()) {
-										imgFile = new File(parentDir, imageName);
+										String imagesdir = model.getAttributes().getOrDefault("imagesdir", "");
+										if (!imagesdir.isEmpty()) {
+											imgFile = new File(parentDir, imagesdir + "/" + imageName);
+										}
 									}
 
 									Hover hover = new Hover();
@@ -530,8 +531,7 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 										String content = String.format("![%s](%s)", imageName, imgUri);
 										hover.setContents(new MarkupContent(MarkupKind.MARKDOWN, content));
 									} else {
-										String content = String.format("**Image not found:** `%s`\n\nChecked in:\n* `%s`\n* `%s`", 
-												imageName, new File(parentDir, "img/").getPath(), parentDir.getPath());
+										String content = String.format("**Image not found:** `%s`", imageName);
 										hover.setContents(new MarkupContent(MarkupKind.MARKDOWN, content));
 									}
 									return hover;
@@ -585,8 +585,6 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 						if (!imagesdir.isEmpty()) {
 							if (!imagesdir.endsWith("/")) imagesdir += "/";
 							loc = resolveFileLocation(uri, imagesdir + path);
-						} else {
-							loc = resolveFileLocation(uri, "img/" + path);
 						}
 					}
 					if (loc != null) {

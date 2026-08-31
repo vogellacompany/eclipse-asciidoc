@@ -73,14 +73,14 @@ class AsciidocDocumentLinkTest {
 		Files.createFile(imgFile);
 
 		String filename = "Sample.png";
-		String content = "image::" + filename + "[]";
+		String content = ":imagesdir: img\nimage::" + filename + "[]";
 		List<DocumentLink> links = getLinks(content);
 
 		assertNotNull(links);
 		assertEquals(1, links.size());
 		DocumentLink link = links.get(0);
 
-		assertEquals(0, link.getRange().getStart().getLine());
+		assertEquals(1, link.getRange().getStart().getLine());
 		assertEquals(7, link.getRange().getStart().getCharacter()); // "image::".length() = 7
 		assertEquals(7 + filename.length(), link.getRange().getEnd().getCharacter());
 		assertEquals(imgFile.toUri(), new java.net.URI(link.getTarget()));

@@ -2,7 +2,6 @@ package com.vogella.asciidoc.lsp.server;
 
 import java.util.concurrent.CompletableFuture;
 
-import org.eclipse.lsp4j.CodeLensOptions;
 import org.eclipse.lsp4j.CompletionOptions;
 import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializeResult;
