@@ -47,7 +47,7 @@ Note: `./mvnw -ntp clean verify` is green (all bundles build, 23 server tests pa
 - [x] 4.4 Completion plus test (PLAN 6.3)
 - [x] 4.5 Document links, definition, hover plus tests (PLAN 6.4)
 - [x] 4.6 Folding plus test (PLAN 6.5)
-- [ ] 4.7 Exit criteria run and green (PLAN 6.7)
+- [x] 4.7 Exit criteria run and green (PLAN 6.7)
 
 ## Phase 5: UI test (optional, time-boxed)
 
