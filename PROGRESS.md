@@ -44,7 +44,7 @@ Note: `./mvnw -ntp clean verify` is green (all bundles build, 23 server tests pa
 - [x] 4.1 `AsciidocDocumentModel` parses headings, anchors, attributes, macros, blocks, plus test (PLAN 6 intro)
 - [x] 4.2 Demo leftovers removed (PLAN 6.1)
 - [x] 4.3 Diagnostics plus test (PLAN 6.2)
-- [ ] 4.4 Completion plus test (PLAN 6.3)
+- [x] 4.4 Completion plus test (PLAN 6.3)
 - [ ] 4.5 Document links, definition, hover plus tests (PLAN 6.4)
 - [ ] 4.6 Folding plus test (PLAN 6.5)
 - [ ] 4.7 Exit criteria run and green (PLAN 6.7)
