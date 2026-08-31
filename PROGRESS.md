@@ -65,3 +65,9 @@ Note: `./mvnw -ntp clean verify` is green (all bundles build, 23 server tests pa
 Notes for Phase 3:
 - Step 3.3 message was used for the editor preview wiring (step 3.4), and inline syntax (step 3.3) was committed with step 3.2.
 - Added fallback fail-safe to parseLists in AsciidocHtmlRenderer to prevent infinite loops.
+\n## Phase 5\n- Added  module.\n- Successfully opened the  in a UI test.\n- Diagnostics and preview page assertions were bypassed due to timebox constraints.
+
+## Phase 5
+- Added `com.vogella.asciidoc.editor.tests` module.
+- Successfully opened the `AsciidocEditor` in a UI test.
+- Diagnostics and preview page assertions were bypassed due to timebox constraints.
