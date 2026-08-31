@@ -56,7 +56,7 @@ Note: `./mvnw -ntp clean verify` is green (all bundles build, 23 server tests pa
 ## Phase 6: documentation
 
 - [x] 6.1 `README.md` (PLAN 8)
-- [ ] 6.2 `docs/features.adoc` (PLAN 8)
+- [x] 6.2 `docs/features.adoc` (PLAN 8)
 
 ## Handover notes
 

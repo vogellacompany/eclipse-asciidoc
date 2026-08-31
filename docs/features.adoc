@@ -1,0 +1,33 @@
+= Eclipse AsciiDoc Editor Features
+
+The Eclipse AsciiDoc Editor provides a rich editing experience powered by a dedicated Language Server. It parses the document in real-time to provide the following features:
+
+== 1. Real-Time Diagnostics
+* **Broken Includes & Images:** Validates local file paths for `include::` and `image::` macros and provides error markers if they are missing. Fully supports resolving paths via the `:imagesdir:` attribute.
+* **Duplicate Anchors:** Detects and warns about multiple headings or elements defining the same ID/anchor.
+* **Smart Validation:** Automatically ignores remote HTTP/HTTPS targets when verifying cross-references and links.
+
+== 2. Auto-Completion (Content Assist)
+* **Macros & Snippets:** Suggests common AsciiDoc blocks and macros like `include::[]`, `image::[]`, and `ifeval::[]`.
+* **Attributes:** Suggests defined document attributes when typing `{`.
+* **Files & Paths:** Provides intelligent path completion for includes and images, looking up files relative to the current document or configured `imagesdir`.
+* **Cross-References:** Suggests available headings and explicit anchors when typing `<<` or `xref:`.
+
+== 3. Hover Previews
+* **Images:** Hovering over an `image::` macro displays a rendered preview of the image right inside the editor tooltip.
+* **Cross-References:** Hovering over an `xref` or `<<anchor>>` shows the title or content of the target heading.
+
+== 4. Navigation (Go to Definition)
+* **Jump to File:** `Ctrl+Click` (or `F3`) on an `include::` or `image::` target opens the referenced file directly in the IDE.
+* **Jump to Heading:** `Ctrl+Click` on an `xref` instantly navigates your cursor to the referenced heading or anchor within the document.
+
+== 5. Document Links
+* **Clickable URLs:** Standard `http://` and `https://` URLs (and `link:` macros) become clickable links that open in your external browser.
+* **Local Links:** Resolves `.adoc` file links and allows opening them seamlessly in the Eclipse workspace.
+
+== 6. Outline & Folding
+* **Document Symbols:** Populates the Eclipse Outline view with a hierarchical tree of all headings, making it easy to navigate large documents.
+* **Code Folding:** Allows folding and expanding structural sections (headings) and delimited blocks (like source code or admonitions) directly from the editor gutter.
+
+== 7. Live HTML Preview
+* Features a synchronized split-pane rendering view that dynamically transforms the AsciiDoc source into a fully styled HTML preview, complete with embedded images, lists, formatted text, and clickable internal cross-references.
