@@ -1,0 +1,7 @@
+bin/
+target/
+*~
+*.bak
+.DS_Store
+.polyglot.*
+.tycho-consumer-pom.xml
