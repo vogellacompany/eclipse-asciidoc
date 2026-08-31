@@ -8,7 +8,7 @@ On resume: `git status --short`, `git log --oneline -20`, then continue with the
 
 - [x] 1.1 Build infrastructure: `.mvn/`, `mvnw`, `pom.xml`, `target-platform/`, `.gitignore`, `LICENSE` (PLAN 3.1)
 - [x] 1.2 Copy and rename the four projects into `bundles/` and `tests/` (PLAN 3.2, rename map in PLAN 2)
-- [ ] 1.3 Manifests, `build.properties`, `.project` files as specified (PLAN 3.3)
+- [x] 1.3 Manifests, `build.properties`, `.project` files as specified (PLAN 3.3)
 - [ ] 1.4 `AsciidocConnectionProvider` replaces the two old provider classes (PLAN 3.4)
 - [ ] 1.5 Feature and update site (PLAN 3.5)
 - [ ] 1.6 CI workflow (PLAN 3.6); GitHub Pages is already enabled
