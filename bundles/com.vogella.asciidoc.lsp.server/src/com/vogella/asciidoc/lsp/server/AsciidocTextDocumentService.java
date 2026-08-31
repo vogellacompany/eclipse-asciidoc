@@ -45,6 +45,9 @@ import org.eclipse.lsp4j.DocumentOnTypeFormattingParams;
 import org.eclipse.lsp4j.DocumentRangeFormattingParams;
 import org.eclipse.lsp4j.DocumentSymbol;
 import org.eclipse.lsp4j.DocumentSymbolParams;
+import org.eclipse.lsp4j.FoldingRange;
+import org.eclipse.lsp4j.FoldingRangeKind;
+import org.eclipse.lsp4j.FoldingRangeRequestParams;
 import org.eclipse.lsp4j.Hover;
 import org.eclipse.lsp4j.HoverParams;
 import org.eclipse.lsp4j.Location;
@@ -721,6 +724,56 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 
 
 
+
+	@Override
+	public CompletableFuture<List<FoldingRange>> foldingRange(FoldingRangeRequestParams params) {
+		return CompletableFuture.supplyAsync(() -> {
+			String uri = params.getTextDocument().getUri();
+			AsciidocDocumentModel model = docs.get(uri);
+			if (model == null) {
+				return Collections.emptyList();
+			}
+
+			List<FoldingRange> ranges = new ArrayList<>();
+			int lineCount = model.getLines().size();
+
+			// Sections
+			List<AsciidocDocumentModel.Heading> headings = model.getHeadings();
+			for (int i = 0; i < headings.size(); i++) {
+				AsciidocDocumentModel.Heading heading = headings.get(i);
+				int startLine = heading.line;
+				int endLine = lineCount - 1;
+
+				for (int j = i + 1; j < headings.size(); j++) {
+					if (headings.get(j).level <= heading.level) {
+						endLine = headings.get(j).line - 1;
+						break;
+					}
+				}
+				
+				if (startLine < endLine) {
+					FoldingRange fr = new FoldingRange(startLine, endLine);
+					fr.setKind(FoldingRangeKind.Region);
+					ranges.add(fr);
+				}
+			}
+
+			// Blocks
+			for (AsciidocDocumentModel.BlockRange block : model.getBlocks()) {
+				if (block.endLine != -1 && block.startLine < block.endLine) {
+					FoldingRange fr = new FoldingRange(block.startLine, block.endLine);
+					if ("/".equals(block.delimiter)) {
+						fr.setKind(FoldingRangeKind.Comment);
+					} else {
+						fr.setKind(FoldingRangeKind.Region);
+					}
+					ranges.add(fr);
+				}
+			}
+
+			return ranges;
+		});
+	}
 
 	@Override
 	public void didOpen(DidOpenTextDocumentParams params) {
