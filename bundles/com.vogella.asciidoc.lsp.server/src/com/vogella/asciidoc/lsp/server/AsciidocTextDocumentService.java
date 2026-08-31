@@ -575,7 +575,7 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 		AsciidocDocumentModel model = new AsciidocDocumentModel(params.getTextDocument().getText());
 		this.docs.put(params.getTextDocument().getUri(), model);
 		CompletableFuture.runAsync(() -> languageServer.client
-				.publishDiagnostics(new PublishDiagnosticsParams(params.getTextDocument().getUri(), validate(model))));
+				.publishDiagnostics(new PublishDiagnosticsParams(params.getTextDocument().getUri(), validate(params.getTextDocument().getUri(), model))));
 
 	}
 
@@ -584,21 +584,119 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 		AsciidocDocumentModel model = new AsciidocDocumentModel(params.getContentChanges().get(0).getText());
 		this.docs.put(params.getTextDocument().getUri(), model);
 		CompletableFuture.runAsync(() -> languageServer.client
-				.publishDiagnostics(new PublishDiagnosticsParams(params.getTextDocument().getUri(), validate(model))));
+				.publishDiagnostics(new PublishDiagnosticsParams(params.getTextDocument().getUri(), validate(params.getTextDocument().getUri(), model))));
 
 	}
 
 	@Override
 	public void didClose(DidCloseTextDocumentParams params) {
 		this.docs.remove(params.getTextDocument().getUri());
+		CompletableFuture.runAsync(() -> languageServer.client
+				.publishDiagnostics(new PublishDiagnosticsParams(params.getTextDocument().getUri(), Collections.emptyList())));
 	}
 	
 	@Override
 	public void didSave(DidSaveTextDocumentParams params) {
 	}
 
-	private List<Diagnostic> validate(AsciidocDocumentModel model) {
+	private List<Diagnostic> validate(String uri, AsciidocDocumentModel model) {
 		List<Diagnostic> diagnostics = new ArrayList<>();
+		Path baseDir = null;
+		try {
+			baseDir = Paths.get(URI.create(uri)).getParent();
+		} catch (Exception e) {
+			// ignore
+		}
+
+		Map<String, Integer> seenAnchors = new HashMap<>();
+		List<String> validIds = new ArrayList<>();
+
+		for (AsciidocDocumentModel.Anchor anchor : model.getAnchors()) {
+			if (seenAnchors.containsKey(anchor.id)) {
+				Diagnostic d = new Diagnostic();
+				d.setSeverity(DiagnosticSeverity.Warning);
+				d.setMessage("Duplicate anchor id: " + anchor.id);
+				d.setRange(new Range(new Position(anchor.line, 0), new Position(anchor.line, anchor.id.length() + 4)));
+				d.setSource("asciidoc");
+				diagnostics.add(d);
+			} else {
+				seenAnchors.put(anchor.id, anchor.line);
+				validIds.add(anchor.id);
+			}
+		}
+
+		for (AsciidocDocumentModel.Heading h : model.getHeadings()) {
+			if (h.id != null && !h.id.isEmpty()) validIds.add(h.id);
+			String replaced = h.title.toLowerCase().replaceAll("[^a-z0-9]+", "_").replaceAll("^_+", "").replaceAll("_+$", "");
+			validIds.add("_" + replaced);
+		}
+
+		for (AsciidocDocumentModel.Macro macro : model.getMacros()) {
+			Range range = new Range(new Position(macro.line, macro.startChar), new Position(macro.line, macro.endChar));
+			
+			if ("include".equals(macro.type)) {
+				if (baseDir != null) {
+					Path targetPath = baseDir.resolve(macro.target);
+					if (!targetPath.toFile().exists()) {
+						Diagnostic d = new Diagnostic();
+						d.setSeverity(DiagnosticSeverity.Error);
+						d.setMessage("Include file not found: " + macro.target);
+						d.setRange(range);
+						d.setSource("asciidoc");
+						diagnostics.add(d);
+					}
+				}
+			} else if ("image".equals(macro.type)) {
+				if (baseDir != null) {
+					String imagesdir = model.getAttributes().getOrDefault("imagesdir", "");
+					Path targetPath = baseDir;
+					if (!imagesdir.isEmpty()) {
+						targetPath = targetPath.resolve(imagesdir);
+					}
+					targetPath = targetPath.resolve(macro.target);
+					if (!targetPath.toFile().exists()) {
+						Diagnostic d = new Diagnostic();
+						d.setSeverity(DiagnosticSeverity.Warning);
+						d.setMessage("Image file not found: " + macro.target);
+						d.setRange(range);
+						d.setSource("asciidoc");
+						diagnostics.add(d);
+					}
+				}
+			} else if ("xref".equals(macro.type) || "link".equals(macro.type)) {
+				if (macro.target.endsWith(".adoc") || (macro.target.contains(".adoc#") && !macro.target.startsWith("http"))) {
+					if (baseDir != null) {
+						String filename = macro.target;
+						if (filename.contains("#")) {
+							filename = filename.substring(0, filename.indexOf('#'));
+						}
+						Path targetPath = baseDir.resolve(filename);
+						if (!targetPath.toFile().exists()) {
+							Diagnostic d = new Diagnostic();
+							d.setSeverity(DiagnosticSeverity.Warning);
+							d.setMessage("Target file not found: " + filename);
+							d.setRange(range);
+							d.setSource("asciidoc");
+							diagnostics.add(d);
+						}
+					}
+				} else if ("xref".equals(macro.type) && !macro.target.contains(".adoc")) {
+					String refId = macro.target;
+					if (refId.contains("#")) {
+						refId = refId.substring(refId.indexOf('#') + 1);
+					}
+					if (!validIds.contains(refId)) {
+						Diagnostic d = new Diagnostic();
+						d.setSeverity(DiagnosticSeverity.Warning);
+						d.setMessage("Unresolved internal reference: " + refId);
+						d.setRange(range);
+						d.setSource("asciidoc");
+						diagnostics.add(d);
+					}
+				}
+			}
+		}
+
 		return diagnostics;
 	}
 
