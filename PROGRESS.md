@@ -22,7 +22,7 @@ Notes (deviations from PLAN, required to make the build green against the pinned
 
 ## Phase 2: two-tab editor
 
-- [ ] 2.1 Editor registration in `plugin.xml` (PLAN 4.1)
+- [x] 2.1 Editor registration in `plugin.xml` (PLAN 4.1)
 - [ ] 2.2 `AsciidocEditor` with Source and Preview pages (PLAN 4.2)
 - [ ] 2.3 `AsciidocEditorContributor` (PLAN 4.3)
 - [ ] 2.4 Real outline via `documentSymbol` plus test (PLAN 4.4)
