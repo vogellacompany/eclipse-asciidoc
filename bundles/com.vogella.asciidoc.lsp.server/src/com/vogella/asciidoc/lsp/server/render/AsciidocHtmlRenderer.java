@@ -460,7 +460,7 @@ public class AsciidocHtmlRenderer {
 		Matcher urlM = Pattern.compile("\\u0001(https?://(?:[\\w\\./\\-?=#]|&amp;)+)(?:\\[(.*?)\\])?\\u0002").matcher(s);
 		StringBuilder b = new StringBuilder();
 		while (urlM.find()) {
-			String url = urlM.group(1).replace("&amp;", "&");
+			String url = urlM.group(1);
 			String txt = urlM.group(2) != null && !urlM.group(2).isEmpty() ? urlM.group(2) : url;
 			urlM.appendReplacement(b, Matcher.quoteReplacement("<a href=\"" + url + "\">" + txt + "</a>"));
 		}

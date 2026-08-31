@@ -49,6 +49,7 @@ Note: `./mvnw -ntp clean verify` is green (all bundles build, 23 server tests pa
 - [x] 4.6 Folding plus test (PLAN 6.5)
 - [x] 4.7 Exit criteria run and green (PLAN 6.7)
 
+## Phase 5: UI test (optional, time-boxed)
 
 - [x] 5.1 `com.vogella.asciidoc.editor.tests` removed, Phase 5 dropped.
 
@@ -65,4 +66,5 @@ Notes for Phase 3:
 - Step 3.3 message was used for the editor preview wiring (step 3.4), and inline syntax (step 3.3) was committed with step 3.2.
 - Added fallback fail-safe to parseLists in AsciidocHtmlRenderer to prevent infinite loops.
 
+Notes for Phase 5:
 - Phase 5 is dropped completely as per the timebox rules.
