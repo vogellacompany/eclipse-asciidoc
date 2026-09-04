@@ -1,0 +1,112 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+    # a change to the prose cannot change what p2 would serve
+    paths-ignore:
+      - '**.md'
+      - '**.adoc'
+      - 'docs/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# two runs must not race the gh-pages publish
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: maven
+
+      - name: Install Xvfb
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+
+      # The vogella release key, an organization secret. An unsigned site would
+      # make p2 warn every user who installs from it, so a missing key fails the
+      # release rather than publishing one.
+      - name: Prepare the PGP signing key
+        env:
+          MAVEN_GPG_KEY: ${{ secrets.MAVEN_GPG_KEY }}
+        run: |
+          if [ -z "$MAVEN_GPG_KEY" ]; then
+            echo "MAVEN_GPG_KEY is not set, refusing to publish an unsigned site" >&2
+            exit 1
+          fi
+          printf '%s\n' "$MAVEN_GPG_KEY" > "$RUNNER_TEMP/signing-key.asc"
+
+      - name: Build and sign
+        env:
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
+        run: |
+          xvfb-run -a ./mvnw -B -ntp clean verify -Dgpg.skip=false \
+            -Dtycho.pgp.signer.bc.secretKeys=$RUNNER_TEMP/signing-key.asc
+
+      # The directory is named after what was actually built, qualifier included,
+      # so a rebuild of the same version never lands on an existing URL.
+      - name: Determine the built version
+        id: version
+        run: |
+          repository=sites/com.vogella.asciidoc.updatesite/target/repository
+          jar=$(find "$repository/features" -name 'com.vogella.asciidoc.feature_*.jar' | sort | head -1)
+          if [ -z "$jar" ]; then
+            echo "No feature jar below $repository/features" >&2
+            exit 1
+          fi
+          echo "value=$(basename "$jar" .jar | sed 's/.*\.feature_//')" >> "$GITHUB_OUTPUT"
+
+      - name: Check out the update site
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Add the build to the update site
+        run: |
+          version="${{ steps.version.outputs.value }}"
+          rm -rf "gh-pages/releases/$version"
+          mkdir -p "gh-pages/releases/$version"
+          cp -r sites/com.vogella.asciidoc.updatesite/target/repository/. "gh-pages/releases/$version"
+          # the site carries this build only; everything else is dropped.
+          # --only rather than --keep 1, because a qualifier-named directory does
+          # not sort above a plainly named one: 1.0.1 beats 1.0.0.202608280419.
+          releng/update-composite-site.sh --only "$version" gh-pages
+
+      - name: Publish the update site
+        working-directory: gh-pages
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if git diff --cached --quiet; then
+            echo "The site already carries this build, nothing to publish"
+            exit 0
+          fi
+          git commit -m "Publish ${{ steps.version.outputs.value }}"
+          git push
+
+      - name: Attach the repository archive to the release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          built=$(find sites/com.vogella.asciidoc.updatesite/target -maxdepth 1 -name '*.zip' | head -1)
+          # the built name carries the Maven -SNAPSHOT suffix, which is misleading on a release
+          archive="com.vogella.asciidoc.updatesite-${GITHUB_REF_NAME#v}.zip"
+          cp "$built" "$archive"
+          gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes || true
+          gh release upload "$GITHUB_REF_NAME" "$archive" --clobber

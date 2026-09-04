@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.vogella.asciidoc</groupId>
+    <artifactId>com.vogella.asciidoc.parent</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <relativePath>../../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>com.vogella.asciidoc.updatesite</artifactId>
+  <packaging>eclipse-repository</packaging>
+
+  <build>
+    <plugins>
+      <!-- PGP signs the artifacts of the update site, the key file comes from
+           -Dtycho.pgp.signer.bc.secretKeys, the passphrase from MAVEN_GPG_PASSPHRASE -->
+      <plugin>
+        <groupId>org.eclipse.tycho</groupId>
+        <artifactId>tycho-gpg-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>pgp-sign</id>
+            <phase>package</phase>
+            <goals>
+              <goal>sign-p2-artifacts</goal>
+            </goals>
+            <configuration>
+              <signer>bc</signer>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <!-- No xz index files, and the archive must contain the signed repository, so it runs after signing -->
+      <plugin>
+        <groupId>org.eclipse.tycho</groupId>
+        <artifactId>tycho-p2-repository-plugin</artifactId>
+        <version>${tycho.version}</version>
+        <configuration>
+          <xzCompress>false</xzCompress>
+        </configuration>
+        <executions>
+          <execution>
+            <id>default-archive-repository</id>
+            <phase>verify</phase>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

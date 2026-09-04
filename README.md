@@ -22,10 +22,22 @@ A modern AsciiDoc editor for the Eclipse IDE, powered by a custom Language Serve
 
 ## Installation
 
-You can install the plugin via our update site:
-`https://vogellacompany.github.io/eclipse-asciidoc/`
+In Eclipse: *Help > Install New Software*, and add this update site:
 
-*Note: The Eclipse LSP4E and TM4E plugins are required.*
+```
+https://vogellacompany.github.io/eclipse-asciidoc/
+```
+
+The required LSP4E and TM4E plugins are pulled in from the Eclipse release train and their own update sites, which the site references.
+
+The site carries the newest build and nothing else, published from `main` by the [Release workflow](.github/workflows/release.yml).
+Older versions are not supported: the previous build is dropped when a new one is published, so update rather than pin.
+
+To install from your own build rather than the hosted site, see [Build Instructions](#build-instructions), then point *Add > Local* at
+
+```
+sites/com.vogella.asciidoc.updatesite/target/repository
+```
 
 ## Architecture
 
@@ -40,6 +52,21 @@ This project uses Maven and Tycho. To build the project and run all tests, simpl
 ```bash
 ./mvnw -ntp clean verify
 ```
+
+The resulting p2 repository lands in `sites/com.vogella.asciidoc.updatesite/target/repository/`.
+
+Pushing to `main` runs that same build and publishes the result to the hosted update site, on the `gh-pages` branch.
+The site carries one build at a time: `releng/update-composite-site.sh` writes the p2 composite metadata that points the root URL at it, and drops what came before.
+A tag of the form `v*` additionally attaches the repository archive to a GitHub release.
+
+The published artifacts are PGP signed with the vogella release key, held in the `MAVEN_GPG_KEY` and `MAVEN_GPG_PASSPHRASE` organization secrets.
+Signing is off in a plain `./mvnw clean verify`; to exercise it locally, point Tycho at an exported secret key:
+
+```bash
+./mvnw clean verify -Dgpg.skip=false -Dtycho.pgp.signer.bc.secretKeys=/path/to/signing-key.asc
+```
+
+with the passphrase in `MAVEN_GPG_PASSPHRASE`.
 
 ## Running from the IDE
 
