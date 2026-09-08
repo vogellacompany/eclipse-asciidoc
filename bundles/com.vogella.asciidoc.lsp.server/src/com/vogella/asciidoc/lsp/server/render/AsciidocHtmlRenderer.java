@@ -666,6 +666,8 @@ public class AsciidocHtmlRenderer {
 			pre { background: #f5f5f5; padding: 0.6em; border-radius: 4px; overflow: auto; }
 			code { background: #f5f5f5; border-radius: 3px; padding: 0.1em 0.3em; }
 			pre code { background: none; padding: 0; }
+			a { color: #0b5cad; }
+			a:visited { color: #6b3fa0; }
 			table { border-collapse: collapse; }
 			th, td { border: 1px solid #ccc; padding: 0.3em 0.6em; }
 			figure { margin: 1em 0; }
@@ -683,6 +685,8 @@ public class AsciidocHtmlRenderer {
 			kbd { background: #eee; border: 1px solid #b4b4b4; border-radius: 3px; padding: 0.1em 0.4em; }
 			@media (prefers-color-scheme: dark) {
 			  body { background: #1e1e1e; color: #d4d4d4; }
+			  a { color: #6cb6ff; }
+			  a:visited { color: #d0a3e8; }
 			  pre, code { background: #2a2a2a; }
 			  th, td { border-color: #555; }
 			  .admonition { background: #262626; }
