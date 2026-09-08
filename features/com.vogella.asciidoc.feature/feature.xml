@@ -3,7 +3,8 @@
       id="com.vogella.asciidoc.feature"
       label="AsciiDoc Editor"
       version="1.0.0.qualifier"
-      provider-name="vogella GmbH">
+      provider-name="vogella GmbH"
+      plugin="com.vogella.asciidoc.editor">
 
    <description>
       AsciiDoc editor for the Eclipse IDE with syntax highlighting, content assist, validation, hyperlinks and an HTML preview, driven by a language server.

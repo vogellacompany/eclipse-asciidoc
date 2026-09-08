@@ -1,3 +1,5 @@
+<img src="docs/images/logo.png" alt="Eclipse AsciiDoc Editor logo" width="128" align="right">
+
 # Eclipse AsciiDoc Editor
 
 A modern AsciiDoc editor for the Eclipse IDE, powered by a custom Language Server built on LSP4E.
@@ -19,6 +21,7 @@ A modern AsciiDoc editor for the Eclipse IDE, powered by a custom Language Serve
     *   Go to Definition for internal anchors, headings, and included files.
 *   **Hover Information**: Shows heading details when hovering over cross-references.
 *   **Code Folding**: Fold sections, comment blocks, and delimited blocks to keep your workspace tidy.
+*   **Flexible Image Lookup**: Image targets resolve through `imagesdir`, and fall back to a sibling `images/` or `img/` folder when that misses.
 
 ## Installation
 
@@ -32,6 +35,8 @@ The required LSP4E and TM4E plugins are pulled in from the Eclipse release train
 
 The site carries the newest build and nothing else, published from `main` by the [Release workflow](.github/workflows/release.yml).
 Older versions are not supported: the previous build is dropped when a new one is published, so update rather than pin.
+
+Once installed, the feature shows up under *Help > About > Installation Details > Features* with its logo and version.
 
 To install from your own build rather than the hosted site, see [Build Instructions](#build-instructions), then point *Add > Local* at
 
