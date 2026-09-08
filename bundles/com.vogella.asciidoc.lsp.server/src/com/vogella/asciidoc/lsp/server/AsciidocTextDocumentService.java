@@ -54,6 +54,9 @@ import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.TextDocumentService;
 
 public class AsciidocTextDocumentService implements TextDocumentService {
+	/** Tried in order when an image is not found through {@code imagesdir}. */
+	private static final List<String> IMAGE_FALLBACK_DIRS = List.of("images", "img");
+
 	private final Map<String, AsciidocDocumentModel> docs = Collections.synchronizedMap(new HashMap<>());
 
 	private final AsciidocLanguageServer languageServer;
@@ -637,12 +640,29 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 		try {
 			File parentDir = new File(new URI(documentUri)).getParentFile();
 			String imagesdir = model.getAttributes().getOrDefault("imagesdir", "");
-			File dir = imagesdir.isEmpty() ? parentDir : new File(parentDir, imagesdir);
-			File file = new File(dir, target);
-			return file.exists() ? file : null;
+			for (String dir : imageSearchDirs(imagesdir)) {
+				File base = dir.isEmpty() ? parentDir : new File(parentDir, dir);
+				File file = new File(base, target);
+				if (file.exists()) {
+					return file;
+				}
+			}
+			return null;
 		} catch (Exception e) {
 			return null;
 		}
+	}
+
+	/** The directories an image target is looked up in, {@code imagesdir} first, then the conventional folders. */
+	private static List<String> imageSearchDirs(String imagesdir) {
+		List<String> dirs = new ArrayList<>();
+		dirs.add(imagesdir);
+		for (String fallback : IMAGE_FALLBACK_DIRS) {
+			if (!fallback.equals(imagesdir)) {
+				dirs.add(fallback);
+			}
+		}
+		return dirs;
 	}
 
 	private Location resolveFileLocation(String baseUri, String relativePath) {
@@ -802,12 +822,15 @@ public class AsciidocTextDocumentService implements TextDocumentService {
 			} else if ("image".equals(macro.type)) {
 				if (baseDir != null) {
 					String imagesdir = model.getAttributes().getOrDefault("imagesdir", "");
-					Path targetPath = baseDir;
-					if (!imagesdir.isEmpty()) {
-						targetPath = targetPath.resolve(imagesdir);
+					boolean found = false;
+					for (String dir : imageSearchDirs(imagesdir)) {
+						Path targetPath = dir.isEmpty() ? baseDir : baseDir.resolve(dir);
+						if (targetPath.resolve(macro.target).toFile().exists()) {
+							found = true;
+							break;
+						}
 					}
-					targetPath = targetPath.resolve(macro.target);
-					if (!targetPath.toFile().exists()) {
+					if (!found) {
 						Diagnostic d = new Diagnostic();
 						d.setSeverity(DiagnosticSeverity.Warning);
 						d.setMessage("Image file not found: " + macro.target);

@@ -15,6 +15,12 @@ public class AsciidocHtmlRendererTest {
     @TempDir
     Path tempDir;
 
+    private static void writePng(Path target) throws Exception {
+        BufferedImage img = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
+        img.setRGB(0, 0, 0xFF0000);
+        ImageIO.write(img, "png", target.toFile());
+    }
+
     @Test
     public void testHeadingsWithIds() {
         AsciidocHtmlRenderer renderer = new AsciidocHtmlRenderer();
@@ -81,6 +87,36 @@ public class AsciidocHtmlRendererTest {
         String text = "image::test.png[]";
         String html = renderer.render(text, RenderOptions.simple(tempDir));
         assertTrue(html.contains("data:image/png;base64,"));
+    }
+
+    @Test
+    public void testImageFoundInImagesFolder() throws Exception {
+        writePng(Files.createDirectories(tempDir.resolve("images")).resolve("test.png"));
+
+        AsciidocHtmlRenderer renderer = new AsciidocHtmlRenderer();
+        String html = renderer.render("image::test.png[]", RenderOptions.simple(tempDir));
+        assertTrue(html.contains("data:image/png;base64,"));
+    }
+
+    @Test
+    public void testImageFoundInImgFolder() throws Exception {
+        writePng(Files.createDirectories(tempDir.resolve("img")).resolve("test.png"));
+
+        AsciidocHtmlRenderer renderer = new AsciidocHtmlRenderer();
+        String html = renderer.render("image::test.png[]", RenderOptions.simple(tempDir));
+        assertTrue(html.contains("data:image/png;base64,"));
+    }
+
+    @Test
+    public void testImagesdirWinsOverFallbackFolders() throws Exception {
+        writePng(Files.createDirectories(tempDir.resolve("assets")).resolve("test.png"));
+        Files.createDirectories(tempDir.resolve("images"));
+        Files.writeString(tempDir.resolve("images/test.png"), "not a png");
+
+        AsciidocHtmlRenderer renderer = new AsciidocHtmlRenderer();
+        String html = renderer.render(":imagesdir: assets\n\nimage::test.png[]", RenderOptions.simple(tempDir));
+        assertTrue(html.contains("data:image/png;base64,"));
+        assertFalse(html.contains("bm90IGE")); // base64 of "not a"
     }
 
     @Test

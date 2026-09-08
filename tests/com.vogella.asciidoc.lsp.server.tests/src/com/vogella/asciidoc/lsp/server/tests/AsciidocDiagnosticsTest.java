@@ -91,4 +91,25 @@ class AsciidocDiagnosticsTest {
 		assertTrue(missingXrefFile);
 		assertTrue(missingXrefId);
 	}
+
+	@Test
+	void testImageInFallbackFolderIsNotReported() throws Exception {
+		Files.createDirectories(tempDir.resolve("images"));
+		Files.writeString(tempDir.resolve("images/found.png"), "x");
+		Files.createDirectories(tempDir.resolve("img"));
+		Files.writeString(tempDir.resolve("img/other.png"), "x");
+
+		Path doc = tempDir.resolve("doc.adoc");
+		String content = "= Title\n\nimage::found.png[]\nimage::other.png[]\n";
+		Files.writeString(doc, content);
+
+		DidOpenTextDocumentParams openParams = new DidOpenTextDocumentParams();
+		openParams.setTextDocument(new TextDocumentItem(doc.toUri().toString(), "asciidoc", 1, content));
+		service.didOpen(openParams);
+
+		List<Diagnostic> diagnostics = diagnosticsFuture.get(5, java.util.concurrent.TimeUnit.SECONDS);
+
+		assertTrue(diagnostics.stream().noneMatch(d -> String.valueOf(d.getMessage()).contains("Image file not found")),
+				"Images in images/ and img/ should resolve");
+	}
 }

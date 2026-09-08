@@ -32,6 +32,9 @@ public class AsciidocHtmlRenderer {
 	private static final Pattern BLOCK_IMAGE = Pattern.compile("^image::([^\\[]+)\\[(.*)\\]\\s*$");
 	private static final Pattern INCLUDE = Pattern.compile("^include::([^\\[]+)\\[(.*)\\]\\s*$");
 
+	/** Tried in order when an image is not found through {@code imagesdir}. */
+	private static final List<String> IMAGE_FALLBACK_DIRS = List.of("images", "img");
+
 	private final Map<String, String> attributes = new LinkedHashMap<>();
 	private RenderOptions options;
 
@@ -528,12 +531,11 @@ public class AsciidocHtmlRenderer {
 	}
 
 	private String resolveImage(String target) {
-		String imagesdir = attributes.getOrDefault("imagesdir", "");
-		Path p = Path.of(imagesdir, target);
-		if (options.baseDir() != null) {
-			p = options.baseDir().resolve(p).normalize();
+		Path p = locateImage(target);
+		if (p == null) {
+			return null;
 		}
-		if (options.inlineImages() && Files.isRegularFile(p)) {
+		if (options.inlineImages()) {
 			try {
 				long size = Files.size(p);
 				if (size <= 10 * 1024 * 1024) {
@@ -552,10 +554,29 @@ public class AsciidocHtmlRenderer {
 				}
 			} catch (IOException e) {}
 		}
-		if (!Files.isRegularFile(p)) {
-			return null;
-		}
 		return p.toUri().toString();
+	}
+
+	/** Looks the target up through {@code imagesdir}, then in the conventional image folders. */
+	private Path locateImage(String target) {
+		String imagesdir = attributes.getOrDefault("imagesdir", "");
+		List<String> dirs = new ArrayList<>();
+		dirs.add(imagesdir);
+		for (String fallback : IMAGE_FALLBACK_DIRS) {
+			if (!fallback.equals(imagesdir)) {
+				dirs.add(fallback);
+			}
+		}
+		for (String dir : dirs) {
+			Path p = Path.of(dir, target);
+			if (options.baseDir() != null) {
+				p = options.baseDir().resolve(p).normalize();
+			}
+			if (Files.isRegularFile(p)) {
+				return p;
+			}
+		}
+		return null;
 	}
 
 	private String substituteAttributes(String s) {
