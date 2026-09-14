@@ -30,6 +30,8 @@ public class AsciidocHtmlRenderer {
 	private static final Pattern DLIST_ITEM = Pattern.compile("^(.*?)::\\s+(.*)$");
 	private static final Pattern ADMONITION_PARA = Pattern.compile("^(NOTE|TIP|IMPORTANT|WARNING|CAUTION):\\s+(.*)$");
 	private static final Pattern BLOCK_IMAGE = Pattern.compile("^image::([^\\[]+)\\[(.*)\\]\\s*$");
+	private static final Pattern COLS_ATTR = Pattern.compile("cols\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)'|([^,\\]]*))");
+	private static final Pattern COL_MULTIPLIER = Pattern.compile("^\\s*(\\d+)\\*");
 	private static final Pattern INCLUDE = Pattern.compile("^include::([^\\[]+)\\[(.*)\\]\\s*$");
 
 	/** Tried in order when an image is not found through {@code imagesdir}. */
@@ -103,6 +105,7 @@ public class AsciidocHtmlRenderer {
 			Matcher attrBlock = ATTR_BLOCK.matcher(line);
 			if (attrBlock.matches()) {
 				String battr = attrBlock.group(1);
+				pendingAttrs.merge("raw", battr, (a, b) -> a + "," + b);
 				if (battr.startsWith("source")) {
 					pendingAttrs.put("style", "source");
 					String[] parts = battr.split(",", 2);
@@ -186,24 +189,7 @@ public class AsciidocHtmlRenderer {
 					out.append("</blockquote>\n");
 				} else if (delim.equals("|===")) {
 					if (pendingTitle != null) out.append("<div class=\"title\">").append(inline(pendingTitle)).append("</div>\n");
-					out.append("<table>\n");
-					boolean isHeader = "header".equals(pendingAttrs.get("options"));
-					if (!isHeader && !blockLines.isEmpty()) {
-						if (blockLines.size() > 1 && blockLines.get(1).strip().isEmpty()) isHeader = true;
-					}
-					for (int k = 0; k < blockLines.size(); k++) {
-						String bl = blockLines.get(k);
-						if (bl.strip().isEmpty()) continue;
-						out.append("<tr>");
-						String[] cells = bl.split("\\|");
-						for (int j = 1; j < cells.length; j++) {
-							String cell = cells[j].strip();
-							String tag = (k == 0 && isHeader) ? "th" : "td";
-							out.append("<").append(tag).append(">").append(inline(cell)).append("</").append(tag).append(">");
-						}
-						out.append("</tr>\n");
-					}
-					out.append("</table>\n");
+					renderTable(blockLines, pendingAttrs.getOrDefault("raw", ""), out);
 				}
 
 				pendingId = null;
@@ -385,6 +371,74 @@ public class AsciidocHtmlRenderer {
 			return i;
 		}
 		return i + 1; // fallback
+	}
+
+	/**
+	 * Renders the content of a {@code |===} block, flowing the cells into rows by
+	 * the column count, so a row may span several source lines.
+	 */
+	private void renderTable(List<String> blockLines, String rawAttrs, StringBuilder out) {
+		List<String> cells = new ArrayList<>();
+		int firstLineCells = -1;
+		boolean firstLineThenBlank = false;
+		for (int k = 0; k < blockLines.size(); k++) {
+			String bl = blockLines.get(k).strip();
+			if (bl.isEmpty()) {
+				continue;
+			}
+			String[] parts = bl.split("\\|");
+			// text before the first separator continues the previous cell
+			if (!parts[0].isBlank() && !cells.isEmpty()) {
+				int last = cells.size() - 1;
+				cells.set(last, cells.get(last) + " " + parts[0].strip());
+			}
+			for (int j = 1; j < parts.length; j++) {
+				cells.add(parts[j].strip());
+			}
+			if (firstLineCells < 0) {
+				firstLineCells = parts.length - 1;
+				firstLineThenBlank = k == 0 && k + 1 < blockLines.size() && blockLines.get(k + 1).isBlank();
+			}
+		}
+		int columns = columnCount(rawAttrs);
+		if (columns <= 0) {
+			columns = Math.max(1, firstLineCells);
+		}
+		boolean header;
+		if (rawAttrs.contains("noheader")) {
+			header = false;
+		} else {
+			header = rawAttrs.contains("header") || firstLineThenBlank;
+		}
+
+		out.append("<table>\n");
+		for (int start = 0; start < cells.size(); start += columns) {
+			String tag = start == 0 && header ? "th" : "td";
+			out.append("<tr>");
+			for (int j = start; j < Math.min(start + columns, cells.size()); j++) {
+				out.append("<").append(tag).append(">").append(inline(cells.get(j))).append("</").append(tag).append(">");
+			}
+			out.append("</tr>\n");
+		}
+		out.append("</table>\n");
+	}
+
+	/** Returns the column count given by a {@code cols} attribute, or 0 when there is none. */
+	private static int columnCount(String rawAttrs) {
+		Matcher m = COLS_ATTR.matcher(rawAttrs);
+		if (!m.find()) {
+			return 0;
+		}
+		String spec = Optional.ofNullable(m.group(1)).or(() -> Optional.ofNullable(m.group(2))).orElse(m.group(3)).strip();
+		if (spec.matches("\\d+")) {
+			return Integer.parseInt(spec);
+		}
+		int count = 0;
+		for (String col : spec.split("[,;]")) {
+			Matcher multiplier = COL_MULTIPLIER.matcher(col);
+			count += multiplier.find() ? Integer.parseInt(multiplier.group(1)) : 1;
+		}
+		return count;
 	}
 
 	private boolean isParagraphBreak(String line) {

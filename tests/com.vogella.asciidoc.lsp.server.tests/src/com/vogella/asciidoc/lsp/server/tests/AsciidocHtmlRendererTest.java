@@ -77,6 +77,35 @@ public class AsciidocHtmlRendererTest {
     }
 
     @Test
+    public void testTableCellsOnSeparateLines() {
+        AsciidocHtmlRenderer renderer = new AsciidocHtmlRenderer();
+        String text = "[cols=\"1,3\"]\n|===\n|Step |Action\n\n|1\n|Open _Help_\n\n|2\n|Add site\n|===";
+        String html = renderer.render(text, RenderOptions.simple(tempDir));
+        assertTrue(html.contains("<tr><th>Step</th><th>Action</th></tr>"), html);
+        assertTrue(html.contains("<tr><td>1</td><td>Open <em>Help</em></td></tr>"), html);
+        assertTrue(html.contains("<tr><td>2</td><td>Add site</td></tr>"), html);
+    }
+
+    @Test
+    public void testTableColumnCountFromFirstLine() {
+        AsciidocHtmlRenderer renderer = new AsciidocHtmlRenderer();
+        String text = "|===\n|a |b |c\n|d\n|e\n|f\n|===";
+        String html = renderer.render(text, RenderOptions.simple(tempDir));
+        assertTrue(html.contains("<tr><td>a</td><td>b</td><td>c</td></tr>"), html);
+        assertTrue(html.contains("<tr><td>d</td><td>e</td><td>f</td></tr>"), html);
+    }
+
+    @Test
+    public void testTableColsMultiplierAndNoHeader() {
+        AsciidocHtmlRenderer renderer = new AsciidocHtmlRenderer();
+        String text = "[cols=\"2*\",options=\"noheader\"]\n|===\n|a\n\n|b\n|c |d\n|===";
+        String html = renderer.render(text, RenderOptions.simple(tempDir));
+        assertFalse(html.contains("<th>"), html);
+        assertTrue(html.contains("<tr><td>a</td><td>b</td></tr>"), html);
+        assertTrue(html.contains("<tr><td>c</td><td>d</td></tr>"), html);
+    }
+
+    @Test
     public void testImageInlined() throws Exception {
         AsciidocHtmlRenderer renderer = new AsciidocHtmlRenderer();
         BufferedImage img = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
