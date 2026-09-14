@@ -4,6 +4,8 @@
 
 A modern AsciiDoc editor for the Eclipse IDE, powered by a custom Language Server built on LSP4E.
 
+![The live preview of the AsciiDoc Editor in the Eclipse IDE](docs/images/preview.png)
+
 ## Features
 
 *   **Two-Tab Editor**: Source editing with an integrated HTML preview page.
