@@ -52,6 +52,12 @@ The project is structured around a Language Server architecture:
 *   **AsciidocDocumentModel**: A lightweight domain model responsible for parsing the AsciiDoc content (headings, anchors, attributes, macros, blocks).
 *   **Language Server**: Implements the LSP protocol to provide features like diagnostics, completions, and navigation, using the `AsciidocDocumentModel` to understand the document structure.
 
+The bundles do not use Activators. Eclipse instantiates the editor and the LSP4E connection provider through their `plugin.xml` extensions.
+The editor and client bundles declare lazy activation; this does not require a `Bundle-Activator`.
+`AsciidocConnectionProvider` owns the in-process server's launcher executor and piped streams, releasing them in `stop()`.
+The editor releases its document listener, preview timer, and browser in `dispose()`.
+Connection cleanup failures are reported through `ILog.of(AsciidocConnectionProvider.class)`, without an Activator singleton.
+
 ## Build Instructions
 
 This project uses Maven and Tycho. To build the project and run all tests, simply execute:

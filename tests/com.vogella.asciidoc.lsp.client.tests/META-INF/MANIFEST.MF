@@ -1,0 +1,10 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: AsciiDoc Language Server Client Tests
+Bundle-SymbolicName: com.vogella.asciidoc.lsp.client.tests
+Bundle-Version: 1.0.0.qualifier
+Bundle-Vendor: vogella GmbH
+Bundle-RequiredExecutionEnvironment: JavaSE-25
+Automatic-Module-Name: com.vogella.asciidoc.lsp.client.tests
+Fragment-Host: com.vogella.asciidoc.lsp.client
+Require-Bundle: junit-jupiter-api
