@@ -43,7 +43,7 @@ public class AsciidocLanguageServer implements AsciidocLanguageServerApi {
 
 	@Override
 	public CompletableFuture<Object> shutdown() {
-		return CompletableFuture.supplyAsync(() -> Boolean.FALSE);
+		return CompletableFuture.completedFuture(null);
 	}
 
 	@Override
