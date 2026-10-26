@@ -23,6 +23,7 @@ A modern AsciiDoc editor for the Eclipse IDE, powered by a custom Language Serve
     *   Go to Definition for internal anchors, headings, and included files.
 *   **Hover Information**: Shows heading details when hovering over cross-references.
 *   **Code Folding**: Fold sections, comment blocks, and delimited blocks to keep your workspace tidy.
+*   **Diagrams**: `[plantuml]` and `[mermaid]` blocks render as diagrams in the preview. PlantUML is rendered to SVG by the bundled PlantUML library (MIT edition), without Graphviz. Mermaid is rendered by the bundled mermaid.js (MIT, see `bundles/com.vogella.asciidoc.editor/mermaid/LICENSE`). Both work offline.
 *   **Flexible Image Lookup**: Image targets resolve through `imagesdir`, and fall back to a sibling `images/` or `img/` folder when that misses.
 
 ## Installation

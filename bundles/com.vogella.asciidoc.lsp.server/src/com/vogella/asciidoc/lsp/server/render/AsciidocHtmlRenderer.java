@@ -151,7 +151,21 @@ public class AsciidocHtmlRenderer {
 				}
 				if (i < lines.size()) i++;
 
-				if (delim.matches("-{4,}") || delim.matches("\\.{4,}")) {
+				String diagram = diagramType(pendingAttrs.get("style"));
+				if (diagram != null && (delim.matches("-{4,}") || delim.matches("\\.{4,}"))) {
+					String source = String.join("\n", blockLines);
+					out.append("<figure class=\"diagram\"");
+					if (pendingId != null) out.append(" id=\"").append(escape(pendingId)).append("\"");
+					out.append(">\n");
+					if (diagram.equals("plantuml")) {
+						out.append(PlantUmlRenderer.toSvg(source)).append("\n");
+					} else {
+						// rendered in the browser by the preview, which loads mermaid.js for these blocks
+						out.append("<pre class=\"mermaid\">").append(escape(source)).append("</pre>\n");
+					}
+					if (pendingTitle != null) out.append("<figcaption>").append(inline(pendingTitle)).append("</figcaption>\n");
+					out.append("</figure>\n");
+				} else if (delim.matches("-{4,}") || delim.matches("\\.{4,}")) {
 					String lang = pendingAttrs.get("lang");
 					if (pendingTitle != null) out.append("<div class=\"title\">").append(inline(pendingTitle)).append("</div>\n");
 					out.append("<pre>");
@@ -693,6 +707,13 @@ public class AsciidocHtmlRenderer {
 		return sb.toString();
 	}
 
+	/** The diagram type of a block style such as {@code plantuml, name, svg}, or null for other blocks. */
+	private static String diagramType(String style) {
+		if (style == null) return null;
+		String type = style.split(",", 2)[0].strip().toLowerCase();
+		return type.equals("plantuml") || type.equals("mermaid") ? type : null;
+	}
+
 	public static String errorPage(String message) {
 		return new AsciidocHtmlRenderer().page("<p class=\"error\">" + escape(message) + "</p>\n");
 	}
@@ -726,6 +747,8 @@ public class AsciidocHtmlRenderer {
 			th, td { border: 1px solid #ccc; padding: 0.3em 0.6em; }
 			figure { margin: 1em 0; }
 			figure img { max-width: 100%; }
+			figure.diagram svg { max-width: 100%; height: auto; }
+			pre.mermaid { background: none; }
 			.title { font-weight: bold; }
 			.admonition { border-left: 4px solid #888; padding: 0.2em 0.8em; margin: 1em 0; background: #fafafa; }
 			.admonition.note { border-left-color: #2196f3; }

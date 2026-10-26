@@ -40,6 +40,9 @@ public class AsciidocEditor extends MultiPageEditorPart implements IGotoMarker {
 	private ExtensionBasedTextEditor sourceEditor;
 	private Browser browser;
 
+	/** Marks a Mermaid diagram in the rendered preview, see {@link MermaidScript}. */
+	private static final String MERMAID_BLOCK = "<pre class=\"mermaid\">";
+
 	private final Runnable refreshRunnable = this::refreshPreview;
 	private final IDocumentListener documentListener = new IDocumentListener() {
 		@Override
@@ -145,10 +148,14 @@ public class AsciidocEditor extends MultiPageEditorPart implements IGotoMarker {
 							// ignore
 						}
 						final Double scrollY = y;
+						final String rendered = (html != null && html.isPresent()) ? (String) html.get() : "";
 
 						ProgressListener progressListener = new org.eclipse.swt.browser.ProgressAdapter() {
 							@Override
 							public void completed(ProgressEvent event) {
+								if (browser != null && !browser.isDisposed() && rendered.contains(MERMAID_BLOCK)) {
+									MermaidScript.renderDiagrams(browser, scrollY);
+								}
 								if (browser != null && !browser.isDisposed() && scrollY != null) {
 									try {
 										browser.evaluate("window.scrollTo(0, " + scrollY + ");");
@@ -161,7 +168,7 @@ public class AsciidocEditor extends MultiPageEditorPart implements IGotoMarker {
 						};
 						browser.addProgressListener(progressListener);
 
-						browser.setText((html != null && html.isPresent()) ? (String) html.get() : "");
+						browser.setText(rendered);
 					}
 				});
 			})

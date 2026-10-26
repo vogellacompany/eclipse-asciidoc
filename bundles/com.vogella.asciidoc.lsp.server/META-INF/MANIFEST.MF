@@ -9,4 +9,5 @@ Automatic-Module-Name: com.vogella.asciidoc.lsp.server
 Export-Package: com.vogella.asciidoc.lsp.server,
  com.vogella.asciidoc.lsp.server.render
 Require-Bundle: org.eclipse.lsp4j,
- org.eclipse.lsp4j.jsonrpc
+ org.eclipse.lsp4j.jsonrpc,
+ net.sourceforge.plantuml.mit

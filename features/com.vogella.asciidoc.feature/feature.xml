@@ -21,4 +21,5 @@
    <plugin id="com.vogella.asciidoc.editor" version="0.0.0"/>
    <plugin id="com.vogella.asciidoc.lsp.server" version="0.0.0"/>
    <plugin id="com.vogella.asciidoc.lsp.client" version="0.0.0"/>
+   <plugin id="net.sourceforge.plantuml.mit" version="0.0.0"/>
 </feature>
