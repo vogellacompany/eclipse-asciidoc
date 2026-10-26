@@ -50,6 +50,35 @@ public class AsciidocHtmlRendererTest {
     }
 
     @Test
+    public void testPlantUmlBlockRendersSvg() {
+        AsciidocHtmlRenderer renderer = new AsciidocHtmlRenderer();
+        String text = ".Greeting\n[plantuml, greeting, svg]\n----\nAlice -> Bob: hello\n----";
+        String html = renderer.render(text, RenderOptions.simple(tempDir));
+        assertTrue(html.contains("<figure class=\"diagram\">"));
+        assertTrue(html.contains("<svg"));
+        assertFalse(html.contains("<?xml"));
+        assertFalse(html.contains("Alice -&gt; Bob"));
+        assertTrue(html.contains("<figcaption>Greeting</figcaption>"));
+    }
+
+    @Test
+    public void testPlantUmlClassDiagramNeedsNoGraphviz() {
+        AsciidocHtmlRenderer renderer = new AsciidocHtmlRenderer();
+        String text = "[plantuml]\n----\n@startuml\nclass A\nclass B\nA --> B\n@enduml\n----";
+        String html = renderer.render(text, RenderOptions.simple(tempDir));
+        assertTrue(html.contains("<svg"));
+        assertFalse(html.contains("Graphviz"));
+    }
+
+    @Test
+    public void testMermaidBlockIsLeftForTheBrowser() {
+        AsciidocHtmlRenderer renderer = new AsciidocHtmlRenderer();
+        String text = "[mermaid]\n----\ngraph TD\n  A --> B\n----";
+        String html = renderer.render(text, RenderOptions.simple(tempDir));
+        assertTrue(html.contains("<pre class=\"mermaid\">graph TD\n  A --&gt; B</pre>"));
+    }
+
+    @Test
     public void testSourceBlock() {
         AsciidocHtmlRenderer renderer = new AsciidocHtmlRenderer();
         String text = "[source,java]\n----\nclass Test {}\n----";

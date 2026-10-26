@@ -20,6 +20,25 @@
       <repository location="https://download.eclipse.org/lsp4e/releases/0.30.8/"/>
       <unit id="org.eclipse.lsp4e"/>
     </location>
+    <location includeDependencyDepth="none" includeDependencyScopes="compile" includeSource="true" missingManifest="generate" type="Maven">
+      <dependencies>
+        <dependency>
+          <groupId>net.sourceforge.plantuml</groupId>
+          <artifactId>plantuml-mit</artifactId>
+          <version>1.2026.9</version>
+          <type>jar</type>
+        </dependency>
+      </dependencies>
+      <instructions><![CDATA[
+Bundle-Name: PlantUML (MIT)
+version: ${version_cleanup;${mvnVersion}}
+Bundle-SymbolicName: net.sourceforge.plantuml.mit
+Bundle-Version: ${version}
+Import-Package: *;resolution:=optional
+Export-Package: *;version="${version}";-noimport:=true
+DynamicImport-Package: *
+]]></instructions>
+    </location>
   </locations>
   <targetJRE path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-25"/>
 </target>
