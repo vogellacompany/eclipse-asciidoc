@@ -22,7 +22,7 @@ import java.util.regex.Pattern;
 public class AsciidocHtmlRenderer {
 
 	private static final Pattern HEADING = Pattern.compile("^(={1,6})\\s+(.+?)\\s*(=+\\s*)?$");
-	private static final Pattern ATTRIBUTE_ENTRY = Pattern.compile("^:([A-Za-z0-9_][A-Za-z0-9_-]*):\\s*(.*)$");
+	private static final Pattern ATTRIBUTE_ENTRY = Pattern.compile("^:(!?)([A-Za-z0-9_][A-Za-z0-9_-]*)(!?):\\s*(.*)$");
 	private static final Pattern ANCHOR = Pattern.compile("^\\[\\[([^\\]]+)\\]\\]\\s*$");
 	private static final Pattern ID_LINE = Pattern.compile("^\\[#([^\\]]+)\\]\\s*$");
 	private static final Pattern ATTR_BLOCK = Pattern.compile("^\\[(.*)\\]\\s*$");
@@ -33,18 +33,102 @@ public class AsciidocHtmlRenderer {
 	private static final Pattern COLS_ATTR = Pattern.compile("cols\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)'|([^,\\]]*))");
 	private static final Pattern COL_MULTIPLIER = Pattern.compile("^\\s*(\\d+)\\*");
 	private static final Pattern INCLUDE = Pattern.compile("^include::([^\\[]+)\\[(.*)\\]\\s*$");
+	private static final Pattern TOC_MACRO = Pattern.compile("^toc::\\[.*\\]\\s*$");
+
+	/** Marks where the table of contents may go, resolved once the whole document is rendered. */
+	private static final String TOC_AT_HEADER = "<!--toc:header-->";
+	private static final String TOC_AT_PREAMBLE = "<!--toc:preamble-->";
+	private static final String TOC_AT_MACRO = "<!--toc:macro-->";
+
+	private record Section(int level, String id, String title) {
+	}
 
 	/** Tried in order when an image is not found through {@code imagesdir}. */
 	private static final List<String> IMAGE_FALLBACK_DIRS = List.of("images", "img");
 
 	private final Map<String, String> attributes = new LinkedHashMap<>();
+	private final List<Section> sections = new ArrayList<>();
 	private RenderOptions options;
+	/** Headings inside delimited blocks are not sections, so they stay out of the table of contents. */
+	private int blockNesting;
+	private boolean preambleMarked;
 
 	public String render(String text, RenderOptions options) {
 		this.options = options;
 		this.attributes.clear();
+		this.sections.clear();
+		this.blockNesting = 0;
+		this.preambleMarked = false;
 		String body = renderBody(text == null ? "" : text, 0, new HashSet<>());
-		return page(body);
+		return page(insertToc(body));
+	}
+
+	private String nested(List<String> blockLines, int includeDepth, Set<Path> includedPaths) {
+		blockNesting++;
+		try {
+			return renderBody(String.join("\n", blockLines), includeDepth, includedPaths);
+		} finally {
+			blockNesting--;
+		}
+	}
+
+	/** Puts the table of contents where the {@code toc} attribute asks for it and drops the other markers. */
+	private String insertToc(String body) {
+		String placement = attributes.get("toc");
+		String marker = switch (placement == null ? "" : placement) {
+		case "macro" -> TOC_AT_MACRO;
+		case "preamble" -> TOC_AT_PREAMBLE;
+		default -> TOC_AT_HEADER;
+		};
+		if (placement != null && !sections.isEmpty()) {
+			String toc = tocHtml();
+			if (body.contains(marker)) {
+				body = body.replaceFirst(Pattern.quote(marker), Matcher.quoteReplacement(toc));
+			} else if (!marker.equals(TOC_AT_MACRO)) {
+				// without a document title Asciidoctor puts it at the top
+				body = toc + body;
+			}
+		}
+		return body.replace(TOC_AT_HEADER, "").replace(TOC_AT_PREAMBLE, "").replace(TOC_AT_MACRO, "");
+	}
+
+	private String tocHtml() {
+		int maxLevel = 2;
+		try {
+			maxLevel = Integer.parseInt(attributes.getOrDefault("toclevels", "2").strip());
+		} catch (NumberFormatException e) {
+			// keep the default
+		}
+		String title = attributes.getOrDefault("toc-title", "Table of Contents");
+		StringBuilder toc = new StringBuilder("<nav id=\"toc\" class=\"toc\">\n<div id=\"toctitle\">")
+				.append(inline(title)).append("</div>\n");
+		int depth = 0;
+		for (Section section : sections) {
+			// "==" is section level 1, one below the document title
+			int level = section.level() - 1;
+			if (level < 1 || level > maxLevel) {
+				continue;
+			}
+			if (level > depth) {
+				while (depth < level) {
+					toc.append(depth == 0 ? "" : "\n").append("<ul>\n<li>");
+					depth++;
+				}
+			} else {
+				toc.append("</li>\n");
+				while (depth > level) {
+					toc.append("</ul>\n</li>\n");
+					depth--;
+				}
+				toc.append("<li>");
+			}
+			toc.append("<a href=\"#").append(escape(section.id())).append("\">").append(section.title()).append("</a>");
+		}
+		while (depth > 0) {
+			toc.append("</li>\n</ul>\n");
+			depth--;
+		}
+		return toc.append("</nav>\n").toString();
 	}
 
 	String renderBody(String text, int includeDepth, Set<Path> includedPaths) {
@@ -86,7 +170,16 @@ public class AsciidocHtmlRenderer {
 			}
 			Matcher attr = ATTRIBUTE_ENTRY.matcher(line);
 			if (attr.matches()) {
-				attributes.put(attr.group(1), attr.group(2).strip());
+				if (attr.group(1).isEmpty() && attr.group(3).isEmpty()) {
+					attributes.put(attr.group(2), attr.group(4).strip());
+				} else {
+					attributes.remove(attr.group(2));
+				}
+				i++;
+				continue;
+			}
+			if (TOC_MACRO.matcher(stripped).matches()) {
+				out.append(TOC_AT_MACRO).append("\n");
 				i++;
 				continue;
 			}
@@ -131,8 +224,18 @@ public class AsciidocHtmlRenderer {
 				int level = heading.group(1).length();
 				String title = heading.group(2).strip();
 				String id = pendingId != null ? pendingId : slug(title);
+				boolean section = blockNesting == 0 && !"discrete".equals(pendingAttrs.get("style"));
+				if (section && level == 2 && !preambleMarked) {
+					out.append(TOC_AT_PREAMBLE).append("\n");
+					preambleMarked = true;
+				}
 				out.append("<h").append(level).append(" id=\"").append(escape(id)).append("\">")
 						.append(inline(title)).append("</h").append(level).append(">\n");
+				if (level == 1 && blockNesting == 0) {
+					out.append(TOC_AT_HEADER).append("\n");
+				} else if (section) {
+					sections.add(new Section(level, id, inline(title)));
+				}
 				pendingId = null;
 				pendingTitle = null;
 				pendingAttrs.clear();
@@ -189,17 +292,17 @@ public class AsciidocHtmlRenderer {
 						out.append("<div class=\"example\">");
 					}
 					if (pendingTitle != null) out.append("<div class=\"title\">").append(inline(pendingTitle)).append("</div>\n");
-					out.append(renderBody(String.join("\n", blockLines), includeDepth, includedPaths));
+					out.append(nested(blockLines, includeDepth, includedPaths));
 					out.append("</div>\n");
 				} else if (delim.matches("\\*{4,}")) {
 					out.append("<aside class=\"sidebar\">\n");
 					if (pendingTitle != null) out.append("<div class=\"title\">").append(inline(pendingTitle)).append("</div>\n");
-					out.append(renderBody(String.join("\n", blockLines), includeDepth, includedPaths));
+					out.append(nested(blockLines, includeDepth, includedPaths));
 					out.append("</aside>\n");
 				} else if (delim.matches("_{4,}")) {
 					out.append("<blockquote>\n");
 					if (pendingTitle != null) out.append("<div class=\"title\">").append(inline(pendingTitle)).append("</div>\n");
-					out.append(renderBody(String.join("\n", blockLines), includeDepth, includedPaths));
+					out.append(nested(blockLines, includeDepth, includedPaths));
 					out.append("</blockquote>\n");
 				} else if (delim.equals("|===")) {
 					if (pendingTitle != null) out.append("<div class=\"title\">").append(inline(pendingTitle)).append("</div>\n");
@@ -463,7 +566,7 @@ public class AsciidocHtmlRenderer {
 		if (ATTR_BLOCK.matcher(s).matches()) return true;
 		return HEADING.matcher(line).matches() || ATTRIBUTE_ENTRY.matcher(line).matches() || 
 			ANCHOR.matcher(line).matches() || ID_LINE.matcher(line).matches() ||
-			BLOCK_IMAGE.matcher(line).matches() || INCLUDE.matcher(line).matches() ||
+			BLOCK_IMAGE.matcher(line).matches() || INCLUDE.matcher(line).matches() || TOC_MACRO.matcher(s).matches() ||
 			ADMONITION_PARA.matcher(line).matches() ||
 			LIST_ITEM.matcher(s).matches() || DLIST_ITEM.matcher(s).matches();
 	}
@@ -750,6 +853,9 @@ public class AsciidocHtmlRenderer {
 			figure.diagram svg { max-width: 100%; height: auto; }
 			pre.mermaid { background: none; }
 			.title { font-weight: bold; }
+			.toc { border: 1px solid #ddd; padding: 0.4em 1em; margin: 1em 0; background: #fafafa; }
+			#toctitle { font-weight: bold; }
+			.toc ul { list-style: none; padding-left: 1.2em; margin: 0.2em 0; }
 			.admonition { border-left: 4px solid #888; padding: 0.2em 0.8em; margin: 1em 0; background: #fafafa; }
 			.admonition.note { border-left-color: #2196f3; }
 			.admonition.tip { border-left-color: #4caf50; }
@@ -767,7 +873,7 @@ public class AsciidocHtmlRenderer {
 			  pre, code { background: #2a2a2a; }
 			  th, td { border-color: #555; }
 			  .admonition { background: #262626; }
-			  .sidebar { background: #262626; border-color: #444; }
+			  .sidebar, .toc { background: #262626; border-color: #444; }
 			  kbd { background: #333; border-color: #555; }
 			}
 			""";

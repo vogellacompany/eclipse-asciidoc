@@ -241,4 +241,48 @@ public class AsciidocHtmlRendererTest {
         String html = renderer.render(text, RenderOptions.simple(tempDir));
         assertTrue(html.contains("&lt;script&gt;alert('xss')&lt;/script&gt;"));
     }
+
+    @Test
+    public void testTocAfterDocumentTitle() {
+        String text = "= Doc\n:toc:\n\nIntro\n\n== First\n\n=== Nested\n\n==== Too deep\n\n== Second";
+        String html = new AsciidocHtmlRenderer().render(text, RenderOptions.simple(tempDir));
+        assertTrue(html.contains("<nav id=\"toc\" class=\"toc\">"), html);
+        assertTrue(html.indexOf("<h1") < html.indexOf("<nav") && html.indexOf("<nav") < html.indexOf("<p>Intro"), html);
+        assertTrue(html.contains("<ul>\n<li><a href=\"#_first\">First</a>\n<ul>\n<li><a href=\"#_nested\">Nested</a></li>\n</ul>\n</li>\n<li><a href=\"#_second\">Second</a></li>\n</ul>"), html);
+        assertFalse(html.contains("href=\"#_too_deep\""), html);
+        assertFalse(html.contains("<!--toc"), html);
+    }
+
+    @Test
+    public void testNoTocWithoutAttribute() {
+        String html = new AsciidocHtmlRenderer().render("= Doc\n\n== First", RenderOptions.simple(tempDir));
+        assertFalse(html.contains("<nav"), html);
+        assertFalse(html.contains("<!--toc"), html);
+    }
+
+    @Test
+    public void testTocMacroTitleAndLevels() {
+        String text = ":toc: macro\n:toc-title: Contents\n:toclevels: 3\n\n== First\n\ntoc::[]\n\n=== Nested\n\n==== Deep";
+        String html = new AsciidocHtmlRenderer().render(text, RenderOptions.simple(tempDir));
+        assertTrue(html.indexOf("<h2") < html.indexOf("<nav"), html);
+        assertTrue(html.contains("<div id=\"toctitle\">Contents</div>"), html);
+        assertTrue(html.contains("href=\"#_deep\""), html);
+    }
+
+    @Test
+    public void testTocPreambleSkipsDiscreteAndBlockHeadings() {
+        String text = "= Doc\n:toc: preamble\n\nIntro\n\n[discrete]\n== Floating\n\n== Real\n\n====\n== Inside\n====";
+        String html = new AsciidocHtmlRenderer().render(text, RenderOptions.simple(tempDir));
+        assertTrue(html.indexOf("<p>Intro") < html.indexOf("<nav"), html);
+        assertTrue(html.contains("href=\"#_real\""), html);
+        assertFalse(html.contains("href=\"#_floating\""), html);
+        assertFalse(html.contains("href=\"#_inside\""), html);
+    }
+
+    @Test
+    public void testUnsetToc() {
+        String html = new AsciidocHtmlRenderer().render(":toc:\n:toc!:\n\n== First", RenderOptions.simple(tempDir));
+        assertFalse(html.contains("<nav"), html);
+        assertFalse(html.contains(":toc!:"), html);
+    }
 }
