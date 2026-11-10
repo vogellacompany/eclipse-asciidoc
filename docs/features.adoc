@@ -25,6 +25,9 @@ Supported block syntax:
 * Paragraphs, with a trailing `+` turning into a line break.
 * Attribute entries (`:name: value`) and their substitution as `{name}` in text.
 An unknown `{name}` is left as written.
+`:name!:` unsets an attribute.
+* A table of contents when the `toc` attribute is set, below the document title, after the preamble with `:toc: preamble` or at a `toc::[]` line with `:toc: macro`.
+`toclevels` (default 2) and `toc-title` are honored; `[discrete]` headings and headings inside blocks are left out.
 * Source and listing blocks (`----`), literal blocks (`....`), example blocks (`====`), sidebars (`****`) and quote blocks (`____`).
 A `[source,lang]` attribute line adds a `language-lang` class.
 * Admonitions, both as a paragraph (`NOTE: text`) and as a block with a preceding `[NOTE]` line.
