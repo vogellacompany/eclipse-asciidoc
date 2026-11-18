@@ -36,7 +36,7 @@ https://vogellacompany.github.io/eclipse-asciidoc/
 
 The required LSP4E and TM4E plugins are pulled in from the Eclipse release train and their own update sites, which the site references.
 
-The site carries the newest build and nothing else, published from `main` by the [Release workflow](.github/workflows/release.yml).
+The site carries the newest build and nothing else, published from `main` by the [Update site workflow](.github/workflows/update-site.yml).
 Older versions are not supported: the previous build is dropped when a new one is published, so update rather than pin.
 
 Once installed, the feature shows up under *Help > About > Installation Details > Features* with its logo and version.
@@ -71,7 +71,7 @@ The resulting p2 repository lands in `sites/com.vogella.asciidoc.updatesite/targ
 
 Pushing to `main` runs that same build and publishes the result to the hosted update site, on the `gh-pages` branch.
 The site carries one build at a time: `releng/update-composite-site.sh` writes the p2 composite metadata that points the root URL at it, and drops what came before.
-A tag of the form `v*` additionally attaches the repository archive to a GitHub release.
+GitHub Actions only publish the update site; branches and pull requests are built and tested locally.
 
 The published artifacts are PGP signed with the vogella release key, held in the `MAVEN_GPG_KEY` and `MAVEN_GPG_PASSPHRASE` organization secrets.
 Signing is off in a plain `./mvnw clean verify`; to exercise it locally, point Tycho at an exported secret key:

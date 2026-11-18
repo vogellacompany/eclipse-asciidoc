@@ -10,7 +10,9 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <tycho.version>5.0.4</tycho.version>
+    <!-- Maven 3.10 pins outputTimestamp to 1980, from which Tycho takes the qualifier; ISO 8601 since a bare yyyyMMddHHmm reads as epoch seconds -->
+    <maven.build.timestamp.format>yyyy-MM-dd'T'HH:mm:ss'Z'</maven.build.timestamp.format>
+    <project.build.outputTimestamp>${maven.build.timestamp}</project.build.outputTimestamp>
     <!-- PGP signing of the update site is off by default, the CI enables it with -Dgpg.skip=false -->
     <gpg.skip>true</gpg.skip>
   </properties>
@@ -18,10 +20,33 @@
   <build>
     <pluginManagement>
       <plugins>
+        <!-- Tycho does not pin these, so they would otherwise follow the running Maven's defaults -->
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-clean-plugin</artifactId>
+          <version>3.5.0</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-resources-plugin</artifactId>
+          <version>3.5.0</version>
+        </plugin>
         <plugin>
           <groupId>org.eclipse.tycho</groupId>
           <artifactId>tycho-gpg-plugin</artifactId>
           <version>${tycho.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.eclipse.tycho</groupId>
+          <artifactId>tycho-surefire-plugin</artifactId>
+          <version>${tycho.version}</version>
+          <configuration>
+            <!-- junit5 so Tycho cannot fall back to junit4 and silently discover no test -->
+            <providerHint>junit5</providerHint>
+            <failIfNoTests>true</failIfNoTests>
+            <!-- keeps the test JVM from taking a quarter of the build server's RAM -->
+            <argLine>-Xmx1g</argLine>
+          </configuration>
         </plugin>
       </plugins>
     </pluginManagement>
@@ -47,6 +72,11 @@
               <os>linux</os>
               <ws>gtk</ws>
               <arch>x86_64</arch>
+            </environment>
+            <environment>
+              <os>linux</os>
+              <ws>gtk</ws>
+              <arch>aarch64</arch>
             </environment>
             <environment>
               <os>win32</os>
