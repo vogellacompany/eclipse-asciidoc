@@ -39,7 +39,7 @@ Therefore:
 
 ### 0.3 House rules
 
-* Java 25, Eclipse 2026-06, Tycho 5.0.4, Maven 3.9.11 (wrapper).
+* Java 25, Eclipse 2026-09, Tycho 5.0.4, Maven 3.10.1 (wrapper).
   Do not use other versions.
 * License: EPL-2.0 for everything in this repository.
 * Never use em dashes in any text (code comments, docs, commit messages).

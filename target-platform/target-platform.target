@@ -3,14 +3,15 @@
 <target name="target-platform">
   <locations>
     <location includeAllPlatforms="false" includeConfigurePhase="true" includeMode="planner" includeSource="true" type="InstallableUnit">
-      <repository location="https://download.eclipse.org/releases/2026-06"/>
+      <repository location="https://download.eclipse.org/releases/2026-09"/>
       <unit id="org.eclipse.platform.feature.group"/>
       <unit id="org.eclipse.equinox.sdk.feature.group"/>
-      <unit id="junit-jupiter-api"/>
-      <unit id="junit-jupiter-engine"/>
-      <unit id="junit-platform-launcher"/>
-      <unit id="junit-platform-suite-api"/>
-      <unit id="junit-platform-suite-engine"/>
+      <!-- JUnit 5, which the junit5 tycho-surefire provider runs; the train also carries JUnit 6 -->
+      <unit id="junit-jupiter-api" version="5.14.4"/>
+      <unit id="junit-jupiter-engine" version="5.14.4"/>
+      <unit id="junit-platform-launcher" version="1.14.4"/>
+      <unit id="junit-platform-suite-api" version="1.14.4"/>
+      <unit id="junit-platform-suite-engine" version="1.14.4"/>
     </location>
     <location includeAllPlatforms="false" includeConfigurePhase="true" includeMode="planner" includeSource="true" type="InstallableUnit">
       <repository location="https://download.eclipse.org/tm4e/releases/0.18.0/"/>

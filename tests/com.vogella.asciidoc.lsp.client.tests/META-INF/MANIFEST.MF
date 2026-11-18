@@ -7,4 +7,4 @@ Bundle-Vendor: vogella GmbH
 Bundle-RequiredExecutionEnvironment: JavaSE-25
 Automatic-Module-Name: com.vogella.asciidoc.lsp.client.tests
 Fragment-Host: com.vogella.asciidoc.lsp.client
-Require-Bundle: junit-jupiter-api
+Require-Bundle: junit-jupiter-api;bundle-version="[5.14.0,6.0.0)"
